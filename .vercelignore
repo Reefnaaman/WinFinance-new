@@ -1,0 +1,35 @@
+# Build artifacts
+.next/
+.turbo/
+.swc/
+tsconfig.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Runtime
+.pnpm-store/
+
+# Documentation
+*.md
+!README.md
+
+# SQL files
+*.sql
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
