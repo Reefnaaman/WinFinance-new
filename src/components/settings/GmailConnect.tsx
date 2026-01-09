@@ -226,7 +226,7 @@ export default function GmailConnect() {
               </button>
 
               <p className="text-xs text-gray-500 text-center">
-                בודק את כל האימיילים מ-leadmail@raion.co.il
+                בודק אימיילים מ: leadmail@raion.co.il, reefnoyman55@gmail.com
               </p>
             </div>
           </div>
