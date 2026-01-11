@@ -17,18 +17,30 @@ function getSupabaseClient() {
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseClient()
-    // Get current session
-    const session = await getServerSession()
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'No authenticated user' },
-        { status: 401 }
-      )
+    // Check if request is from webhook
+    const body = await request.json().catch(() => ({}))
+    const isWebhook = body.triggered_by === 'webhook'
+    const webhookSecret = request.headers.get('x-webhook-secret')
+    const isValidWebhook = isWebhook || webhookSecret === process.env.WEBHOOK_SECRET
+
+    let userEmail = 'reefnoyman55@gmail.com' // Default email for webhook
+
+    // If not webhook, check authentication
+    if (!isValidWebhook) {
+      const session = await getServerSession()
+      if (!session?.user?.email) {
+        return NextResponse.json(
+          { error: 'No authenticated user' },
+          { status: 401 }
+        )
+      }
+      userEmail = session.user.email
+    } else {
+      console.log('Processing webhook request - no authentication required')
     }
 
-    const userEmail = session.user.email
-    console.log(`Checking Gmail for user: ${userEmail}`)
+    console.log(`Checking Gmail for: ${userEmail}`)
 
     const gmailService = new GmailService()
 
@@ -177,6 +189,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   // Vercel cron jobs use GET requests
-  // Call the same logic as POST
-  return POST(request)
+  // Create a mock POST request with webhook trigger
+  const mockRequest = new NextRequest(request.url, {
+    method: 'POST',
+    headers: request.headers,
+    body: JSON.stringify({ triggered_by: 'webhook' })
+  })
+  return POST(mockRequest)
 }
