@@ -40,9 +40,10 @@ export async function POST(request: NextRequest) {
 
     let query: string
     if (isWebhook) {
-      // For webhook: only check UNREAD emails to get the newest ones
-      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) is:unread`
-      console.log('Webhook trigger - checking only unread emails')
+      // For webhook: check RECENT emails (last hour) regardless of read status
+      // This ensures we catch emails even if they were auto-marked as read
+      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) newer_than:1h`
+      console.log('Webhook trigger - checking emails from last hour (read and unread)')
     } else {
       // For manual check: get emails from past 2 days
       const twoDaysAgo = new Date()
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log the check
+    // Log the check with detailed info
     await supabase
       .from('email_logs')
       .insert({
@@ -163,7 +164,15 @@ export async function POST(request: NextRequest) {
         email_subject: `Gmail Check - Processed ${processedCount} emails`,
         processed_at: new Date().toISOString(),
         lead_created: createdLeads > 0,
-        raw_content: `Checked ${messages.length} emails, created ${createdLeads} leads, skipped ${skippedInvalid} invalid`
+        raw_content: JSON.stringify({
+          query: query,
+          isWebhook: isWebhook,
+          totalFound: messages.length,
+          processed: processedCount,
+          created: createdLeads,
+          skipped: skippedInvalid,
+          userEmail: userEmail
+        })
       })
 
     return NextResponse.json({
