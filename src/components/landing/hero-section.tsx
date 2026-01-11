@@ -21,12 +21,12 @@ export function HeroSection() {
             <span className="text-xs sm:text-sm md:text-sm">שינוי סטנדרט השירות הפיננסי בישראל</span>
           </div>
 
-          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-balance mb-4 sm:mb-6 leading-tight px-2 sm:px-0">
+          <h1 className="text-4xl xs:text-5xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-balance mb-4 sm:mb-6 leading-tight px-2 sm:px-0">
             <span className="block">העתיד הפיננסי שלך</span>
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent block mt-1 sm:mt-0">מתחיל כאן</span>
+            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent block mt-2 sm:mt-2 md:mt-0">מתחיל כאן</span>
           </h1>
 
-          <p className="text-sm xs:text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-4 sm:px-0">
+          <p className="text-base xs:text-lg sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-4 sm:px-0">
             פתרונות פיננסיים מקיפים תחת קורת גג אחת. תכנון פיננסי, פנסיה, ביטוח ומימון - מותאמים אישית לצרכים שלך עם
             ליווי מקצועי לאורך כל הדרך
           </p>
@@ -40,16 +40,16 @@ export function HeroSection() {
             >
               <Button
                 size="lg"
-                className="bg-secondary hover:bg-secondary/90 active:bg-secondary/80 text-secondary-foreground text-sm sm:text-base md:text-lg px-6 sm:px-8 py-6 sm:py-7 md:py-6 h-auto font-semibold group w-full sm:w-auto transition-all"
+                className="bg-secondary hover:bg-secondary/90 active:bg-secondary/80 text-secondary-foreground text-base sm:text-base md:text-lg px-6 sm:px-8 py-6 sm:py-7 md:py-6 h-auto font-semibold group w-full sm:w-auto transition-all"
               >
-                <span className="text-sm sm:text-base md:text-lg">קבעו פגישת ייעוץ חינם</span>
+                <span className="text-base sm:text-base md:text-lg">קבעו פגישת ייעוץ חינם</span>
                 <ArrowLeft className="mr-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:-translate-x-1 transition-transform" />
               </Button>
             </a>
             <Button
               size="lg"
               variant="outline"
-              className="text-sm sm:text-base md:text-lg px-6 sm:px-8 py-6 sm:py-7 md:py-6 h-auto border-2 border-primary/40 font-semibold hover:bg-primary/5 hover:border-primary/60 active:bg-primary/10 bg-transparent w-full sm:w-auto transition-all text-primary"
+              className="text-base sm:text-base md:text-lg px-6 sm:px-8 py-6 sm:py-7 md:py-6 h-auto border-2 border-primary/40 font-semibold hover:bg-primary/5 hover:border-primary/60 active:bg-primary/10 bg-transparent w-full sm:w-auto transition-all text-primary"
             >
               למידע נוסף
             </Button>
