@@ -184,8 +184,35 @@ export class GmailService {
   }
 
   parseLeadFromEmail(emailContent: string): any {
-    // Reuse existing parsing logic
-    const content = emailContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+    // Strip HTML tags first if content contains HTML
+    let content = emailContent;
+
+    // If content has HTML tags, strip them
+    if (content.includes('<') && content.includes('>')) {
+      // Remove script and style elements completely
+      content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      content = content.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+
+      // Replace br tags with newlines
+      content = content.replace(/<br\s*\/?>/gi, '\n');
+
+      // Replace p and div tags with newlines
+      content = content.replace(/<\/?(p|div)[^>]*>/gi, '\n');
+
+      // Remove all other HTML tags
+      content = content.replace(/<[^>]+>/g, '');
+
+      // Decode HTML entities
+      content = content.replace(/&nbsp;/g, ' ')
+                      .replace(/&amp;/g, '&')
+                      .replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>')
+                      .replace(/&quot;/g, '"')
+                      .replace(/&#039;/g, "'");
+    }
+
+    // Clean up whitespace
+    content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
 
     // Extract שם מלא (Full name)
     const nameMatch = content.match(/שם מלא:\s*(.+)/i)
@@ -195,9 +222,37 @@ export class GmailService {
     const phoneMatch = content.match(/טלפון נייד:\s*(.+)/i) || content.match(/טלפון:\s*(.+)/i)
     if (!phoneMatch) return null
 
+    // Validate extracted data
+    const extractedName = nameMatch[1].trim();
+    const extractedPhone = phoneMatch[1].trim();
+
+    // Check if the extracted values are HTML tags or invalid
+    if (extractedName.includes('<') || extractedName.includes('>') ||
+        extractedName === 'br' || extractedName === 'br /' ||
+        extractedName === 'br/') {
+      console.log('Invalid name extracted (contains HTML):', extractedName);
+      return null;
+    }
+
+    if (extractedPhone.includes('<') || extractedPhone.includes('>') ||
+        extractedPhone === 'br' || extractedPhone === 'br /' ||
+        extractedPhone === 'br/') {
+      console.log('Invalid phone extracted (contains HTML):', extractedPhone);
+      return null;
+    }
+
+    const cleanedPhone = this.cleanPhoneNumber(extractedPhone);
+
+    // Validate phone number has at least 9 digits
+    const digitsOnly = cleanedPhone.replace(/\D/g, '');
+    if (digitsOnly.length < 9) {
+      console.log('Invalid phone number (less than 9 digits):', cleanedPhone);
+      return null;
+    }
+
     const result: any = {
-      lead_name: nameMatch[1].trim(),
-      phone: this.cleanPhoneNumber(phoneMatch[1].trim())
+      lead_name: extractedName,
+      phone: cleanedPhone
     }
 
     // Extract email

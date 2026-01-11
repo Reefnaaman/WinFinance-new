@@ -50,14 +50,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`Found ${messages.length} unread emails`)
+    // Limit processing to prevent flooding
+    const MAX_EMAILS_PER_RUN = 20;
+    const messagesToProcess = messages.slice(0, MAX_EMAILS_PER_RUN);
+
+    console.log(`Found ${messages.length} unread emails, processing first ${messagesToProcess.length}`)
 
     let processedCount = 0
     let createdLeads = 0
+    let skippedInvalid = 0
     const errors = []
 
     // Process each message
-    for (const message of messages) {
+    for (const message of messagesToProcess) {
       try {
         // Get full message details
         const fullMessage = await gmailService.getMessage(userEmail, message.id!)
@@ -77,6 +82,7 @@ export async function POST(request: NextRequest) {
         const leadData = gmailService.parseLeadFromEmail(emailContent)
 
         if (leadData && leadData.lead_name && leadData.phone) {
+          console.log(`Parsed lead: ${leadData.lead_name} - ${leadData.phone}`)
           // Check if lead already exists with same phone number
           const { data: existingLead } = await supabase
             .from('leads')
@@ -98,7 +104,7 @@ export async function POST(request: NextRequest) {
               lead_name: leadData.lead_name,
               phone: leadData.phone,
               email: leadData.email || null,
-              source: 'Raion Email',  // Changed to identify source
+              source: 'Email',  // Standard enum value for email sources
               relevance_status: 'ממתין לבדיקה',
               agent_notes: leadData.notes || `נשלח מ: ${from}\nנושא: ${subject}\nתאריך: ${date}`,
               created_at: new Date().toISOString(),
@@ -118,7 +124,10 @@ export async function POST(request: NextRequest) {
             await gmailService.markAsRead(userEmail, message.id!)
           }
         } else {
-          console.log(`Email ${message.id} doesn't contain lead information`)
+          console.log(`Email ${message.id} doesn't contain valid lead information`)
+          console.log(`Subject: ${subject}`)
+          console.log(`From: ${from}`)
+          skippedInvalid++
 
           // You might want to still mark it as read if it's from specific senders
           // For now, we'll leave it unread
@@ -139,7 +148,7 @@ export async function POST(request: NextRequest) {
         email_subject: `Gmail Check - Processed ${processedCount} emails`,
         processed_at: new Date().toISOString(),
         lead_created: createdLeads > 0,
-        raw_content: `Checked ${messages.length} emails, created ${createdLeads} leads`
+        raw_content: `Checked ${messages.length} emails, created ${createdLeads} leads, skipped ${skippedInvalid} invalid`
       })
 
     return NextResponse.json({
@@ -147,6 +156,8 @@ export async function POST(request: NextRequest) {
       message: `Processed ${processedCount} emails, created ${createdLeads} leads`,
       processed: processedCount,
       created: createdLeads,
+      skippedInvalid: skippedInvalid,
+      totalFound: messages.length,
       errors: errors.length > 0 ? errors : undefined
     })
 

@@ -11,6 +11,17 @@ export const metadata: Metadata = {
   title: "WinFinance | פתרונות פיננסיים מקיפים",
   description: "חברת פתרונות פיננסיים המתמחה בתכנון פיננסי, פרישה וביטוח. שירותים מקיפים ללקוחות פרטיים ועסקיים.",
   generator: "v0.app",
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "WinFinance",
+  },
   icons: {
     icon: [
       {
@@ -30,6 +41,13 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,7 +55,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="he" dir="rtl">
-      <body className={`font-sans antialiased`}>
+      <body
+        className={`font-sans antialiased`}
+        suppressHydrationWarning
+      >
         {children}
         <Analytics />
       </body>

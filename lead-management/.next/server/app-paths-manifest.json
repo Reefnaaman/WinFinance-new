@@ -1,0 +1,19 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/check-emails/route": "app/api/check-emails/route.js",
+  "/api/check-gmail/route": "app/api/check-gmail/route.js",
+  "/api/create-lead-from-email/route": "app/api/create-lead-from-email/route.js",
+  "/api/detect-csv-headers/route": "app/api/detect-csv-headers/route.js",
+  "/api/email-settings/route": "app/api/email-settings/route.js",
+  "/api/export-csv/route": "app/api/export-csv/route.js",
+  "/api/gmail/refresh-token/route": "app/api/gmail/refresh-token/route.js",
+  "/api/import-csv/route": "app/api/import-csv/route.js",
+  "/api/parse-email/route": "app/api/parse-email/route.js",
+  "/api/test-email-connection/route": "app/api/test-email-connection/route.js",
+  "/api/webhooks/lead-created/route": "app/api/webhooks/lead-created/route.js",
+  "/apple-icon.png/route": "app/apple-icon.png/route.js",
+  "/icon.png/route": "app/icon.png/route.js",
+  "/page": "app/page.js"
+}

@@ -68,7 +68,7 @@ export function Header() {
 
           {/* Mobile hamburger menu - right side */}
           <button
-            className="md:hidden p-2 text-foreground"
+            className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-foreground transition-all active:scale-95 hover:bg-accent/10 rounded-md touch-manipulation"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="תפריט"
           >
@@ -86,11 +86,11 @@ export function Header() {
               </div>
             </div>
 
-            <ul className="space-y-4 mb-6">
+            <ul className="space-y-2 mb-6">
               <li>
                 <a
                   href="#about"
-                  className="block text-lg text-foreground/80 hover:text-foreground transition-colors font-medium py-2"
+                  className="block text-lg text-foreground/80 hover:text-foreground transition-all font-medium py-3 px-2 rounded-md min-h-[44px] flex items-center active:bg-accent/10 hover:bg-accent/5 touch-manipulation"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   אודות
@@ -99,7 +99,7 @@ export function Header() {
               <li>
                 <a
                   href="#services"
-                  className="block text-lg text-foreground/80 hover:text-foreground transition-colors font-medium py-2"
+                  className="block text-lg text-foreground/80 hover:text-foreground transition-all font-medium py-3 px-2 rounded-md min-h-[44px] flex items-center active:bg-accent/10 hover:bg-accent/5 touch-manipulation"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   שירותים
@@ -108,7 +108,7 @@ export function Header() {
               <li>
                 <a
                   href="#advantages"
-                  className="block text-lg text-foreground/80 hover:text-foreground transition-colors font-medium py-2"
+                  className="block text-lg text-foreground/80 hover:text-foreground transition-all font-medium py-3 px-2 rounded-md min-h-[44px] flex items-center active:bg-accent/10 hover:bg-accent/5 touch-manipulation"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   למה אנחנו
@@ -117,7 +117,7 @@ export function Header() {
               <li>
                 <a
                   href="#contact"
-                  className="block text-lg text-foreground/80 hover:text-foreground transition-colors font-medium py-2"
+                  className="block text-lg text-foreground/80 hover:text-foreground transition-all font-medium py-3 px-2 rounded-md min-h-[44px] flex items-center active:bg-accent/10 hover:bg-accent/5 touch-manipulation"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   צור קשר
@@ -125,22 +125,22 @@ export function Header() {
               </li>
             </ul>
 
-            <div className="space-y-3 pt-6 border-t border-border">
+            <div className="space-y-2 pt-6 border-t border-border">
               <a
                 href={`tel:${phoneNumber}`}
-                className="flex items-center gap-3 text-foreground/80 hover:text-foreground transition-colors"
+                className="flex items-center gap-3 text-foreground/80 hover:text-foreground transition-all py-3 px-2 rounded-md min-h-[44px] active:bg-accent/10 hover:bg-accent/5 touch-manipulation"
               >
                 <span className="text-sm font-medium">📞</span>
                 <span className="text-base">{phoneNumber}</span>
               </a>
               <a
                 href="mailto:peleg@winfinance.co.il"
-                className="flex items-center gap-3 text-foreground/80 hover:text-foreground transition-colors"
+                className="flex items-center gap-3 text-foreground/80 hover:text-foreground transition-all py-3 px-2 rounded-md min-h-[44px] active:bg-accent/10 hover:bg-accent/5 touch-manipulation"
               >
                 <span className="text-sm font-medium">✉️</span>
                 <span className="text-base">peleg@winfinance.co.il</span>
               </a>
-              <div className="flex items-center gap-3 text-foreground/80">
+              <div className="flex items-center gap-3 text-foreground/80 py-3 px-2 rounded-md min-h-[44px]">
                 <span className="text-sm font-medium">📍</span>
                 <span className="text-base">רחוב הרוקמים 2, חולון</span>
               </div>

@@ -186,14 +186,7 @@ export default function FullDashboard() {
     // Role-based filtering: agents only see their assigned leads
     if (user?.role === 'agent') {
       const matches = lead.assigned_agent_id === user.id;
-      if (!matches && lead.assigned_agent_id) {
-        console.log('Agent filter mismatch:', {
-          leadAgentId: lead.assigned_agent_id,
-          userId: user.id,
-          userName: user.name,
-          leadName: lead.lead_name
-        });
-      }
+      // Remove debug logging that's flooding console
       return matches;
     }
 
@@ -300,7 +293,7 @@ export default function FullDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white" dir="rtl">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-[100]">
         <div className="max-w-none mx-auto px-2 sm:px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Left: Logo and Hamburger Menu */}
