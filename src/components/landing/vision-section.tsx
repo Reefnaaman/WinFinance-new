@@ -1,8 +1,19 @@
+"use client"
+
 import { Sparkles } from "lucide-react"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 export function VisionSection() {
+  const { ref, isVisible } = useScrollAnimation({
+    threshold: 0.2,
+  })
+
   return (
-    <section id="about" className="py-16 sm:py-20 md:py-32 relative overflow-hidden">
+    <section
+      ref={ref as any}
+      id="about"
+      className={`py-16 sm:py-20 md:py-32 relative overflow-hidden fade-in-section ${isVisible ? 'visible' : ''}`}
+    >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-background to-accent/8"></div>
 
       <div className="container mx-auto px-4 relative z-10">

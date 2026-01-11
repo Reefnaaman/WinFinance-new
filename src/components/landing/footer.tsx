@@ -1,9 +1,20 @@
+"use client"
+
 import Image from "next/image"
 import { Phone, Mail, MapPin } from "lucide-react"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 export function Footer() {
+  const { ref, isVisible } = useScrollAnimation({
+    threshold: 0.1,
+    triggerOnce: true,
+  })
+
   return (
-    <footer className="bg-muted/50 border-t border-border py-12">
+    <footer
+      ref={ref as any}
+      className={`bg-muted/50 border-t border-border py-12 fade-in ${isVisible ? 'visible' : ''}`}
+    >
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
           <div className="flex flex-col items-center sm:items-center lg:items-start gap-3 sm:col-span-2 lg:col-span-1">

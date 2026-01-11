@@ -1,5 +1,8 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { TrendingUp, Shield, PiggyBank, Home } from "lucide-react"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 const services = [
   {
@@ -25,8 +28,20 @@ const services = [
 ]
 
 export function ServicesSection() {
+  const { ref: sectionRef, isVisible: sectionVisible } = useScrollAnimation({
+    threshold: 0.1,
+  })
+  const { ref: cardsRef, isVisible: cardsVisible } = useScrollAnimation({
+    threshold: 0.05,
+    rootMargin: "50px",
+  })
+
   return (
-    <section id="services" className="py-16 md:py-32">
+    <section
+      ref={sectionRef as any}
+      id="services"
+      className={`py-16 md:py-32 fade-in-section ${sectionVisible ? 'visible' : ''}`}
+    >
       <div className="container mx-auto px-4">
         <div className="text-center mb-10 sm:mb-12 md:mb-16 px-4 sm:px-0">
           <h2 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 text-balance">השירותים שלנו</h2>
@@ -35,9 +50,18 @@ export function ServicesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+        <div
+          ref={cardsRef as any}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6"
+        >
           {services.map((service, index) => (
-            <Card key={index} className="p-5 sm:p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 touch-manipulation active:scale-[0.98]">
+            <Card
+              key={index}
+              className={`p-5 sm:p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 touch-manipulation active:scale-[0.98] stagger-item ${cardsVisible ? 'visible' : ''}`}
+              style={{
+                transitionDelay: cardsVisible ? `${index * 100}ms` : '0ms'
+              }}
+            >
               <div className="bg-gradient-to-br from-primary/15 to-accent/15 w-14 h-14 sm:w-16 sm:h-16 md:w-14 md:h-14 rounded-lg flex items-center justify-center mb-3 sm:mb-4">
                 <service.icon className="w-7 h-7 sm:w-8 sm:h-8 md:w-7 md:h-7 text-primary" />
               </div>

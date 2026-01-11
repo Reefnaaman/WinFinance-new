@@ -1,11 +1,22 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Phone, Mail, MapPin } from "lucide-react"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 export function CTASection() {
+  const { ref, isVisible } = useScrollAnimation({
+    threshold: 0.1,
+  })
+
   return (
-    <section id="contact" className="py-16 md:py-32 bg-secondary text-secondary-foreground">
+    <section
+      ref={ref as any}
+      id="contact"
+      className={`py-16 md:py-32 bg-secondary text-secondary-foreground fade-in-section ${isVisible ? 'visible' : ''}`}
+    >
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10 md:mb-12">
