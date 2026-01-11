@@ -20,7 +20,16 @@ export async function POST(request: NextRequest) {
     // For now, allow all requests since this is only called from admin panel or webhook
     // The admin panel itself requires authentication to access
     const body = await request.json().catch(() => ({}))
-    const userEmail = 'reefnoyman55@gmail.com' // Use the Gmail account that's connected
+
+    // Get the actual connected Gmail account from the database
+    const { data: tokenData } = await supabase
+      .from('gmail_tokens')
+      .select('user_email')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const userEmail = tokenData?.user_email || 'peleg@winfinance.co.il'
 
     console.log(`Checking Gmail for: ${userEmail}`)
 
