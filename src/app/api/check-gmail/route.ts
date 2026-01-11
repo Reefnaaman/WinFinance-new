@@ -35,14 +35,24 @@ export async function POST(request: NextRequest) {
 
     const gmailService = new GmailService()
 
-    // Get emails from the past 2 days only to prevent spam
-    const twoDaysAgo = new Date()
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-    const dateString = `${twoDaysAgo.getFullYear()}/${twoDaysAgo.getMonth() + 1}/${twoDaysAgo.getDate()}`
+    // Check if this is from webhook (instant processing) or manual (batch processing)
+    const isWebhook = body.triggered_by === 'webhook'
 
-    // Query for emails from specific senders within the past 2 days
-    const query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) after:${dateString}`
-    console.log(`Checking emails with query: ${query}`)
+    let query: string
+    if (isWebhook) {
+      // For webhook: only check UNREAD emails to get the newest ones
+      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) is:unread`
+      console.log('Webhook trigger - checking only unread emails')
+    } else {
+      // For manual check: get emails from past 2 days
+      const twoDaysAgo = new Date()
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+      const dateString = `${twoDaysAgo.getFullYear()}/${twoDaysAgo.getMonth() + 1}/${twoDaysAgo.getDate()}`
+      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) after:${dateString}`
+      console.log('Manual check - checking emails from past 2 days')
+    }
+
+    console.log(`Query: ${query}`)
 
     const messages = await gmailService.listMessages(userEmail, query)
 
