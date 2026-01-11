@@ -216,9 +216,26 @@ export default function GmailConnect() {
             <div className="mt-4 space-y-2">
               <button
                 onClick={async () => {
-                  const response = await fetch('/api/check-gmail', { method: 'POST' })
-                  const data = await response.json()
-                  alert(`נבדקו ${data.processed || 0} אימיילים\nנוצרו ${data.created || 0} לידים חדשים`)
+                  try {
+                    const response = await fetch('/api/check-gmail', {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({})
+                    })
+
+                    if (!response.ok) {
+                      throw new Error(`Error: ${response.status}`)
+                    }
+
+                    const data = await response.json()
+                    alert(`נבדקו ${data.processed || 0} אימיילים\nנוצרו ${data.created || 0} לידים חדשים`)
+                  } catch (error) {
+                    console.error('Error checking emails:', error)
+                    alert('שגיאה בבדיקת אימיילים. אנא נסה שוב.')
+                  }
                 }}
                 className="w-full px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
               >
