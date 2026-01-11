@@ -275,13 +275,21 @@ export class GmailService {
     if (notesIndex !== -1) {
       // Get everything after "הערות:" until the end or next field
       const afterNotes = content.substring(notesIndex + 'הערות:'.length).trim()
-      // Take everything until we hit another field pattern or end of content
-      const nextFieldMatch = afterNotes.match(/^(.+?)(?=\n(?:שם|טלפון|אימייל|כתובת|התקבל|בעזרת):|$)/s)
-      if (nextFieldMatch) {
-        const notesContent = nextFieldMatch[1].trim()
-        if (notesContent) {
-          notes.push(notesContent)
+      // Split by newlines and take lines until we hit another field
+      const lines = afterNotes.split('\n')
+      const notesLines = []
+
+      for (const line of lines) {
+        // Check if this line starts a new field
+        if (line.match(/^(שם|טלפון|אימייל|כתובת|התקבל|בעזרת):/)) {
+          break
         }
+        notesLines.push(line)
+      }
+
+      const notesContent = notesLines.join('\n').trim()
+      if (notesContent) {
+        notes.push(notesContent)
       }
     }
 
