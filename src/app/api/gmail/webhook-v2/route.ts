@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { google } from 'googleapis'
-import { gmailService } from '@/services/gmailService'
+import { GmailService } from '@/services/gmailService'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -126,9 +126,16 @@ export async function POST(request: NextRequest) {
             })
 
             // Parse lead from email
-            const leadInfo = await gmailService.parseLeadFromEmail(fullMessage.data)
+            const gmailService = new GmailService()
 
-            if (leadInfo && leadInfo.name && leadInfo.phone) {
+            // Extract email content
+            const { text, html, from, subject, date } = gmailService.parseEmailContent(fullMessage.data)
+            const emailContent = text || html || ''
+
+            // Parse lead information
+            const leadInfo = gmailService.parseLeadFromEmail(emailContent)
+
+            if (leadInfo && leadInfo.lead_name && leadInfo.phone) {
               // Check if lead already exists
               const { data: existingLead } = await supabase
                 .from('leads')
@@ -141,7 +148,7 @@ export async function POST(request: NextRequest) {
                 const { data: newLead, error } = await supabase
                   .from('leads')
                   .insert({
-                    lead_name: leadInfo.name,
+                    lead_name: leadInfo.lead_name,
                     phone: leadInfo.phone,
                     email: leadInfo.email || '',
                     source: 'Email',
@@ -153,7 +160,7 @@ export async function POST(request: NextRequest) {
                 if (error) {
                   console.error('Error creating lead:', error)
                 } else {
-                  console.log('Lead created:', leadInfo.name, leadInfo.phone)
+                  console.log('Lead created:', leadInfo.lead_name, leadInfo.phone)
                   leadsCreated++
 
                   // Mark message as read
