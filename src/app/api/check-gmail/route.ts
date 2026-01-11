@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const MAX_EMAILS_PER_RUN = 20;
     const messagesToProcess = messages.slice(0, MAX_EMAILS_PER_RUN);
 
-    console.log(`Found ${messages.length} unread emails, processing first ${messagesToProcess.length}`)
+    console.log(`Found ${messages.length} emails matching query, processing first ${messagesToProcess.length}`)
 
     let processedCount = 0
     let createdLeads = 0
@@ -108,8 +108,13 @@ export async function POST(request: NextRequest) {
 
           if (existingLead) {
             console.log(`Lead with phone ${leadData.phone} already exists, skipping`)
-            // Still mark as read to avoid reprocessing
-            await gmailService.markAsRead(userEmail, message.id!)
+            // Try to mark as read but don't fail if it doesn't work
+            try {
+              await gmailService.markAsRead(userEmail, message.id!)
+              console.log(`Marked email ${message.id} as read`)
+            } catch (markError) {
+              console.error(`Failed to mark email ${message.id} as read:`, markError)
+            }
             continue
           }
 
@@ -136,8 +141,14 @@ export async function POST(request: NextRequest) {
             console.log('Lead created successfully:', newLead.id)
             createdLeads++
 
-            // Mark email as read
-            await gmailService.markAsRead(userEmail, message.id!)
+            // Try to mark email as read
+            try {
+              await gmailService.markAsRead(userEmail, message.id!)
+              console.log(`Marked new lead email ${message.id} as read`)
+            } catch (markError) {
+              console.error(`Failed to mark email ${message.id} as read:`, markError)
+              // Don't fail the whole process, just log the error
+            }
           }
         } else {
           console.log(`Email ${message.id} doesn't contain valid lead information`)
