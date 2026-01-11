@@ -269,11 +269,20 @@ export class GmailService {
       result.address = addressMatch[1].trim()
     }
 
-    // Extract notes
+    // Extract notes - get everything after "הערות:"
     const notes = []
-    const notesMatch = content.match(/הערות:\s*(.+)/i)
-    if (notesMatch) {
-      notes.push(notesMatch[1].trim())
+    const notesIndex = content.search(/הערות:/i)
+    if (notesIndex !== -1) {
+      // Get everything after "הערות:" until the end or next field
+      const afterNotes = content.substring(notesIndex + 'הערות:'.length).trim()
+      // Take everything until we hit another field pattern or end of content
+      const nextFieldMatch = afterNotes.match(/^(.+?)(?=\n(?:שם|טלפון|אימייל|כתובת|התקבל|בעזרת):|$)/s)
+      if (nextFieldMatch) {
+        const notesContent = nextFieldMatch[1].trim()
+        if (notesContent) {
+          notes.push(notesContent)
+        }
+      }
     }
 
     const campaignMatch = content.match(/התקבל ליד חדש מקמפיין\s*-\s*(.+)/i)

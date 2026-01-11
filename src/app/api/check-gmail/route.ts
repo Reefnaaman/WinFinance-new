@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
               email: leadData.email || null,
               source: 'Email',  // Standard enum value for email sources
               relevance_status: 'ממתין לבדיקה',
-              agent_notes: leadData.notes || `נשלח מ: ${from}\nנושא: ${subject}\nתאריך: ${date}`,
+              agent_notes: leadData.notes || null,  // Only use actual notes from email content
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
