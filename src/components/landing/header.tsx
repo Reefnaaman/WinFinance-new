@@ -78,14 +78,6 @@ export function Header() {
 
         {mobileMenuOpen && (
           <div className="md:hidden py-6 border-t border-border">
-            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-border">
-              <Image src="/winfinance-logo.png" alt="WinFinance Logo" width={40} height={40} className="w-10 h-10" />
-              <div className="text-left">
-                <div className="text-xl font-bold text-foreground">WinFinance</div>
-                <div className="text-xs text-muted-foreground">ווין פיננס</div>
-              </div>
-            </div>
-
             <ul className="space-y-2 mb-6">
               <li>
                 <a
