@@ -44,12 +44,14 @@ export async function POST(request: NextRequest) {
 
     const gmailService = new GmailService()
 
-    // Get list of messages from leadmail@raion.co.il AND reefnoyman55@gmail.com (both read and unread)
-    // You can adjust the query to include date ranges or other filters
-    const query = 'from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com' // This will get ALL emails from both senders
-    // Alternative queries:
-    // '(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) is:unread' - only unread
-    // '(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) after:2024/1/1' - emails after specific date
+    // Get emails from the past 2 days only to prevent spam
+    const twoDaysAgo = new Date()
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    const dateString = `${twoDaysAgo.getFullYear()}/${twoDaysAgo.getMonth() + 1}/${twoDaysAgo.getDate()}`
+
+    // Query for emails from specific senders within the past 2 days
+    const query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) after:${dateString}`
+    console.log(`Checking emails with query: ${query}`)
 
     const messages = await gmailService.listMessages(userEmail, query)
 
