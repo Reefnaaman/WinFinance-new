@@ -30,6 +30,8 @@ export interface HomePageProps {
   currentUser?: Agent | null;
   /** Optional CSS class name */
   className?: string;
+  /** Data is still loading */
+  loading?: boolean;
 }
 
 // ============================================================================
@@ -58,7 +60,8 @@ export default function HomePage({
   timeRange,
   setTimeRange,
   currentUser,
-  className = ""
+  className = "",
+  loading = false
 }: HomePageProps) {
   // ============================================================================
   // CALCULATE ANALYTICS DATA
@@ -76,8 +79,45 @@ export default function HomePage({
   } = analyticsData;
 
   // ============================================================================
-  // RENDER
+  // RENDER WITH LOADING STATE
   // ============================================================================
+
+  // Show skeleton loader while data is loading
+  if (loading || (dbLeads.length === 0 && dbAgents.length === 0)) {
+    return (
+      <div className={`space-y-6 ${className}`}>
+        {/* Page Title Skeleton */}
+        <div className="animate-pulse">
+          <div className="h-8 bg-slate-200 rounded w-32"></div>
+        </div>
+
+        {/* Welcome Banner Skeleton */}
+        <div className="animate-pulse bg-white rounded-2xl shadow-sm p-6">
+          <div className="space-y-4">
+            <div className="h-6 bg-slate-200 rounded w-48"></div>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 bg-slate-200 rounded w-20"></div>
+                  <div className="h-8 bg-slate-200 rounded w-16"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="animate-pulse bg-white rounded-2xl shadow-sm p-6">
+              <div className="h-6 bg-slate-200 rounded w-32 mb-4"></div>
+              <div className="h-48 bg-slate-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`space-y-6 ${className}`}>

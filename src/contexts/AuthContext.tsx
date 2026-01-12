@@ -76,68 +76,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserData = async (email: string) => {
     try {
       console.log('Fetching user data for email:', email)
-
-      // ALWAYS fetch from the real database with timeout
       console.log('Attempting database query...')
 
-      // Create a timeout promise that resolves (not rejects) with an error
-      const timeoutPromise = new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ data: null, error: { message: 'Query timeout after 3 seconds' } })
-        }, 3000) // Reduced to 3 seconds for faster fallback
-      })
+      // Fetch from the database with proper retry logic
+      let retries = 3
+      let lastError = null
 
-      // Create the query promise
-      const queryPromise = supabase
-        .from('agents')
-        .select('*')
-        .eq('email', email)
-        .single()
-
-      // Race between timeout and query
-      const { data, error } = await Promise.race([
-        queryPromise,
-        timeoutPromise
-      ]) as any
-
-      console.log('Agent query result:', { data, error, email })
-
-      if (error) {
-        // Only log as warning for timeout, not error
-        if (error.message && error.message.includes('timeout')) {
-          console.warn('Database query timed out - using session email as fallback')
-          // Create a basic user from the session email
-          const fallbackUser: Agent = {
-            id: email, // Use email as temporary ID
-            name: email.split('@')[0],
-            email: email,
-            role: 'agent', // Default role, will be corrected when DB responds
-            created_at: new Date().toISOString()
-          }
-          setUser(fallbackUser)
-          setLoading(false)
-
-          // Try to fetch the real data in background (non-blocking)
-          Promise.resolve(supabase
+      while (retries > 0) {
+        try {
+          const { data, error } = await supabase
             .from('agents')
             .select('*')
             .eq('email', email)
-            .single())
-            .then(({ data }) => {
-              if (data) {
-                console.log('Background fetch successful, updating user data')
-                setUser(data)
-              }
-            })
-            .catch(() => {
-              // Silently fail - we already have fallback
-            })
-          return
+            .single()
+
+          if (data && !error) {
+            console.log('Agent query successful:', { data, email })
+            console.log('Setting user:', data)
+            setUser(data)
+            setLoading(false)
+            return
+          }
+
+          if (error) {
+            lastError = error
+            console.log(`Query attempt failed (${4 - retries}/3):`, error.message)
+            retries--
+
+            if (retries > 0) {
+              // Wait before retry with exponential backoff
+              await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
+            }
+          }
+        } catch (err) {
+          lastError = err
+          retries--
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
+          }
         }
+      }
 
-        console.error('Error fetching user data:', error.message || error)
+      // All retries failed
+      if (lastError) {
+        console.error('Error fetching user data after retries:', lastError)
 
-        // Try with case-insensitive search
+        // Try with case-insensitive search as last resort
         try {
           const { data: ciData, error: ciError } = await supabase
             .from('agents')
@@ -145,9 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .ilike('email', email)
             .single()
 
-          console.log('Case-insensitive query result:', { data: ciData, error: ciError })
-
-          if (ciData) {
+          if (ciData && !ciError) {
             console.log('Setting user (case-insensitive match):', ciData)
             setUser(ciData)
             setLoading(false)
@@ -157,23 +139,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Case-insensitive search also failed:', e)
         }
 
-        // Still no match - show error
+        // No agent found - user needs to be added to the system
         console.error('No agent found for email:', email)
         setUser(null)
         setLoading(false)
-        return
       }
-
-      if (!data) {
-        console.error('No data returned for email:', email)
-        setUser(null)
-        setLoading(false)
-        return
-      }
-
-      console.log('Setting user:', data)
-      setUser(data)
-      setLoading(false)
     } catch (error) {
       console.error('Error in fetchUserData:', error)
       // Don't create a fallback user - let the user know there's an issue

@@ -10,7 +10,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "WinFinance | פתרונות פיננסיים מקיפים",
   description: "חברת פתרונות פיננסיים המתמחה בתכנון פיננסי, פרישה וביטוח. שירותים מקיפים ללקוחות פרטיים ועסקיים.",
-  generator: "v0.app",
   formatDetection: {
     telephone: false,
     date: false,
@@ -24,6 +23,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       {
         url: "/icon-light-32x32.png",
         media: "(prefers-color-scheme: light)",

@@ -26,7 +26,9 @@ export default function FullDashboard() {
   // Database data
   const [dbLeads, setDbLeads] = useState<Lead[]>([]);
   const [dbAgents, setDbAgents] = useState<Agent[]>([]);
+  // Start loading as true to prevent flash of empty content
   const [loading, setLoading] = useState(true);
+  const [dataInitialized, setDataInitialized] = useState(false);
 
   // Mobile navigation state
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -61,7 +63,10 @@ export default function FullDashboard() {
   // Fetch data from Supabase
   const fetchData = async () => {
     try {
-      setLoading(true);
+      // Don't reset loading state if data is already initialized
+      if (!dataInitialized) {
+        setLoading(true);
+      }
 
       const { data: agentsData } = await supabase
         .from('agents')
@@ -75,6 +80,7 @@ export default function FullDashboard() {
 
       setDbAgents(agentsData || []);
       setDbLeads(leadsData || []);
+      setDataInitialized(true);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -83,22 +89,34 @@ export default function FullDashboard() {
   };
 
   // useEffect MUST be before any conditional returns
+  // Only fetch data once auth is complete and user is available
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user && !authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
 
-  // Force agents and lead suppliers to their respective pages
-  // Also set default sorting for agents
+  // Set default page and sorting based on role
+  // Only set initial page on first mount, not on every user update
   useEffect(() => {
-    if (user?.role === 'agent') {
-      setCurrentPage('leads');
-      // Automatically sort by date for agents (most recent first)
+    if (!user) return;
+
+    // Only set initial page once when user is first loaded
+    // This prevents unwanted redirects after authentication
+    if (user.role === 'agent') {
+      // Set default sorting for agents (most recent first)
       setSortBy('date');
       setSortOrder('desc');
-    } else if (user?.role === 'lead_supplier') {
-      setCurrentPage('supplier-dashboard');
+      // Don't force navigate to leads page - let user stay on their current page
+    } else if (user.role === 'lead_supplier') {
+      // Lead suppliers should start on their dashboard
+      // Only set if current page is still 'home' (initial state)
+      if (currentPage === 'home') {
+        setCurrentPage('supplier-dashboard');
+      }
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only run when user ID changes (login/logout), not on every user object update
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -402,6 +420,7 @@ export default function FullDashboard() {
             timeRange={timeRange}
             setTimeRange={setTimeRange}
             currentUser={user}
+            loading={loading}
           />
         )}
         {currentPage === 'leads' && (
