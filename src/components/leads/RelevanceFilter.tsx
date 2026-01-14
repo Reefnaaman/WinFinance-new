@@ -107,7 +107,7 @@ export default function RelevanceFilter({
       onChange={handleRelevanceChange}
       options={relevanceOptions}
       placeholder="בחר רלוונטיות"
-      icon="Shield"
+      label="סינון לפי רלוונטיות"
       className={className}
       width={width}
     />
