@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
+import Portal from '../ui/Portal';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -101,24 +102,13 @@ export default function TimeRangeFilter({
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomInputs, setShowCustomInputs] = useState(timeRange === 'custom');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // ============================================================================
   // EVENT HANDLERS & EFFECTS
   // ============================================================================
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
+  // No manual click-outside needed - using backdrop approach
 
   // Show/hide custom inputs based on selection
   useEffect(() => {
@@ -127,9 +117,13 @@ export default function TimeRangeFilter({
 
   const handleOptionSelect = (rangeId: string) => {
     setTimeRange(rangeId);
-    setIsOpen(false);
+    // Only close the dropdown if NOT selecting custom
     if (rangeId !== 'custom') {
+      setIsOpen(false);
       setShowCustomInputs(false);
+    } else {
+      // Keep dropdown open when selecting custom
+      setShowCustomInputs(true);
     }
   };
 
@@ -182,6 +176,7 @@ export default function TimeRangeFilter({
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Modern Filter Button */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center gap-2 px-3 md:px-4 py-2.5 rounded-xl text-sm font-medium transition-all
@@ -202,13 +197,24 @@ export default function TimeRangeFilter({
         <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Modern Dropdown Menu */}
+      {/* Portal Dropdown Menu - Escapes all stacking contexts */}
       {isOpen && (
-        <div className={`
-          absolute top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200
-          z-50 overflow-hidden
-          ${glassMorphism ? 'backdrop-blur-md bg-white/95' : ''}
-        `}>
+        <>
+          {/* Backdrop to close */}
+          <div
+            className="fixed inset-0"
+            style={{ zIndex: 999998 }}
+            onClick={() => setIsOpen(false)}
+          />
+
+          <Portal triggerElement={buttonRef.current} placement="bottom-end">
+            <div
+              ref={dropdownRef}
+              className={`
+                w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-visible
+                ${glassMorphism ? 'backdrop-blur-md bg-white/95' : ''}
+              `}
+            >
           {/* Preset Options */}
           <div className="p-1">
             {timeRanges.filter(range => range.id !== 'custom').map((range) => (
@@ -272,7 +278,9 @@ export default function TimeRangeFilter({
               </div>
             </div>
           )}
-        </div>
+            </div>
+          </Portal>
+        </>
       )}
     </div>
   );
