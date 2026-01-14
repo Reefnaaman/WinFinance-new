@@ -56,8 +56,8 @@ interface LeadsPageProps {
   setSwipedCard: (id: string | null) => void;
   swipeStart: { x: number; y: number } | null;
   setSwipeStart: (pos: { x: number; y: number } | null) => void;
-  sortBy: 'status' | 'date' | 'name' | 'agent';
-  setSortBy: (sort: 'status' | 'date' | 'name' | 'agent') => void;
+  sortBy: 'status' | 'date' | 'name' | 'agent' | 'relevance' | 'source';
+  setSortBy: (sort: 'status' | 'date' | 'name' | 'agent' | 'relevance' | 'source') => void;
   sortOrder: 'asc' | 'desc';
   setSortOrder: (order: 'asc' | 'desc') => void;
   isRefreshing: boolean;
