@@ -83,11 +83,9 @@ export default function RelevanceFilter({
       id: relevance.id,
       label: relevance.label,
       count: showCounts && leadCounts ? leadCounts[relevance.id] : undefined,
-      badge: {
-        color: relevance.color,
-        lightBg: relevance.lightBg,
-        text: relevance.text
-      }
+      color: relevance.color,
+      lightBg: relevance.lightBg,
+      text: relevance.text
     }))
   ];
 
