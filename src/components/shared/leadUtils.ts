@@ -65,29 +65,44 @@ export const updateLeadField = async (leadId: string, field: string, value: any)
     }
 
     // Special handling for agent assignment
-    if (field === 'assigned_agent_id' && value) {
-      // Get the current lead data
-      // @ts-ignore
-      const { data: lead } = await supabase
-        .from('leads')
-        .select('relevance_status, status')
-        .eq('id', leadId)
-        .single();
+    if (field === 'assigned_agent_id') {
+      // Convert empty string to null for database
+      const agentValue = value === '' ? null : value;
 
-      // If lead is relevant and status is 'ליד חדש', update to 'תואם'
-      // @ts-ignore
-      if (lead?.relevance_status === 'רלוונטי' && lead?.status === 'ליד חדש') {
-        const { error } = await supabase
+      // Only do special status handling if assigning an agent (not removing one)
+      if (agentValue) {
+        // Get the current lead data
+        // @ts-ignore
+        const { data: lead } = await supabase
           .from('leads')
-          // @ts-ignore
-          .update({
-            assigned_agent_id: value,
-            status: 'תואם'
-          })
-          .eq('id', leadId);
-        if (error) throw error;
-        return;
+          .select('relevance_status, status')
+          .eq('id', leadId)
+          .single();
+
+        // If lead is relevant and status is 'ליד חדש', update to 'תואם'
+        // @ts-ignore
+        if (lead?.relevance_status === 'רלוונטי' && lead?.status === 'ליד חדש') {
+          const { error } = await supabase
+            .from('leads')
+            // @ts-ignore
+            .update({
+              assigned_agent_id: agentValue,
+              status: 'תואם'
+            })
+            .eq('id', leadId);
+          if (error) throw error;
+          return;
+        }
       }
+
+      // For all other cases (including unassigning), just update the agent
+      const { error } = await supabase
+        .from('leads')
+        // @ts-ignore
+        .update({ assigned_agent_id: agentValue })
+        .eq('id', leadId);
+      if (error) throw error;
+      return;
     }
 
     // Normal update for other fields
@@ -152,9 +167,19 @@ export const getSourceInfo = (sourceId: string, sources: any[]) => {
   return sources.find(s => s.id === sourceId);
 };
 
-export const getDateRange = (range: string) => {
+export interface DateRangeResult {
+  startDate: Date;
+  endDate?: Date;
+}
+
+export const getDateRange = (range: string, customStartDate?: Date, customEndDate?: Date): Date | null => {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Handle custom date range
+  if (range === 'custom' && customStartDate) {
+    return customStartDate;
+  }
 
   switch (range) {
     case 'week':
@@ -165,6 +190,19 @@ export const getDateRange = (range: string) => {
       const monthAgo = new Date(startOfToday);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       return monthAgo;
+    case 'current_month':
+      // From first day of current month to today
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    case 'previous_month':
+      // Full previous month (first day to last day)
+      return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    case 'current_quarter':
+      // Calculate current quarter start
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      return new Date(now.getFullYear(), currentQuarter * 3, 1);
+    case 'current_year':
+      // From January 1st of current year to today
+      return new Date(now.getFullYear(), 0, 1);
     case '3months':
       const threeMonthsAgo = new Date(startOfToday);
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
@@ -175,5 +213,46 @@ export const getDateRange = (range: string) => {
       return yearAgo;
     default:
       return null;
+  }
+};
+
+export const getDateRangeWithEnd = (range: string, customStartDate?: Date, customEndDate?: Date): DateRangeResult | null => {
+  const now = new Date();
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  // Handle custom date range
+  if (range === 'custom' && customStartDate && customEndDate) {
+    return {
+      startDate: customStartDate,
+      endDate: customEndDate
+    };
+  }
+
+  const startDate = getDateRange(range, customStartDate, customEndDate);
+  if (!startDate) return null;
+
+  switch (range) {
+    case 'previous_month':
+      // Full previous month - end on last day of that month
+      const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      return {
+        startDate,
+        endDate: lastDayOfPrevMonth
+      };
+    case 'current_quarter':
+      // Current quarter - end today or end of quarter if quarter is complete
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const quarterEndMonth = (currentQuarter + 1) * 3 - 1;
+      const quarterEnd = new Date(now.getFullYear(), quarterEndMonth + 1, 0, 23, 59, 59, 999);
+      return {
+        startDate,
+        endDate: quarterEnd < endOfToday ? quarterEnd : endOfToday
+      };
+    default:
+      // All other ranges filter from start date to today
+      return {
+        startDate,
+        endDate: endOfToday
+      };
   }
 };

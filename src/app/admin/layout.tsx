@@ -1,7 +1,19 @@
-'use client'
+import type { Metadata } from 'next'
+import AdminProviders from './providers'
 
-import { AuthProvider } from '@/contexts/AuthContext'
-import { SessionProvider } from 'next-auth/react'
+export const metadata: Metadata = {
+  title: 'WinFinance Admin | ניהול לידים',
+  description: 'מערכת ניהול לידים וסוכנים - WinFinance',
+  icons: {
+    icon: [
+      { url: "/winfinance-logo-no-text.png", sizes: "any" },
+      { url: "/winfinance-logo-no-text.png", sizes: "32x32" },
+      { url: "/winfinance-logo-no-text.png", sizes: "16x16" },
+    ],
+    apple: "/winfinance-logo-no-text.png",
+    shortcut: "/winfinance-logo-no-text.png",
+  },
+}
 
 export default function AdminLayout({
   children,
@@ -9,10 +21,8 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <SessionProvider>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </SessionProvider>
+    <AdminProviders>
+      {children}
+    </AdminProviders>
   )
 }

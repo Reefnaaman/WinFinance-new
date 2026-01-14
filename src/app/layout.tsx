@@ -23,21 +23,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/winfinance-logo-no-text.png", sizes: "any" },
+      { url: "/winfinance-logo-no-text.png", sizes: "32x32" },
+      { url: "/winfinance-logo-no-text.png", sizes: "16x16" },
     ],
-    apple: "/apple-icon.png",
+    apple: "/winfinance-logo-no-text.png",
+    shortcut: "/winfinance-logo-no-text.png",
   },
 }
 

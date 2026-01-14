@@ -11,7 +11,7 @@ import InlineDateTimePicker from '../InlineDateTimePicker';
 import FiltersBar from './FiltersBar';
 import ActionButtons from './ActionButtons';
 import ModernSelector from './ModernSelector';
-import SortingDropdown from './SortingDropdown';
+import SortableHeader from './SortableHeader';
 import { StatusOption } from './StatusFilter';
 import { SourceOption } from './SourceFilter';
 import {
@@ -22,6 +22,7 @@ import {
   getAgentInfo,
   getSourceInfo
 } from '../shared/leadUtils';
+import { DateRange } from '../dashboard/DateRangePicker';
 
 interface LeadsPageProps {
   filteredLeads: Lead[];
@@ -37,10 +38,17 @@ interface LeadsPageProps {
   setActiveStatus: (status: string) => void;
   activeSource: string;
   setActiveSource: (source: string) => void;
+  activeRelevance: string;
+  setActiveRelevance: (relevance: string) => void;
+  timeRange: string;
+  setTimeRange: (range: string) => void;
+  customDateRange: DateRange;
+  setCustomDateRange: (range: DateRange) => void;
   filterCounts?: {
     agents: Record<string, number>;
     statuses: Record<string, number>;
     sources: Record<string, number>;
+    relevance: Record<string, number>;
   };
   fetchData: () => Promise<void>;
   canCreateLeads: () => boolean;
@@ -72,6 +80,12 @@ export default function LeadsPage({
   setActiveStatus,
   activeSource,
   setActiveSource,
+  activeRelevance,
+  setActiveRelevance,
+  timeRange,
+  setTimeRange,
+  customDateRange,
+  setCustomDateRange,
   filterCounts,
   fetchData,
   canCreateLeads,
@@ -138,6 +152,18 @@ export default function LeadsPage({
   const cancelEdit = () => {
     setEditingField(null);
     setEditingValue('');
+  };
+
+  // Sort handler for column headers
+  const handleSort = (field: 'status' | 'date' | 'name' | 'agent' | 'relevance' | 'source') => {
+    if (sortBy === field) {
+      // Toggle sort order if clicking the same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to descending
+      setSortBy(field);
+      setSortOrder('desc');
+    }
   };
 
   const handleUpdateLeadField = async (leadId: string, field: string, value: any) => {
@@ -251,16 +277,19 @@ export default function LeadsPage({
           setActiveStatus={setActiveStatus}
           activeSource={activeSource}
           setActiveSource={setActiveSource}
+          activeRelevance={activeRelevance}
+          setActiveRelevance={setActiveRelevance}
+          timeRange={timeRange}
+          setTimeRange={setTimeRange}
+          customDateRange={customDateRange}
+          setCustomDateRange={setCustomDateRange}
           agents={dbAgents}
           statuses={statuses}
           sources={sources}
+          relevanceStatuses={relevanceStatuses}
           showCounts={true}
           filterCounts={filterCounts}
           className="mb-4 md:mb-6"
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          sortOrder={sortOrder}
-          setSortOrder={setSortOrder}
           totalLeads={filteredLeads.length}
         >
           <ActionButtons
@@ -277,34 +306,106 @@ export default function LeadsPage({
           <div className="px-4 py-4">
             {user?.role === 'agent' ? (
               // Agent view - simplified columns
-              <div className="grid grid-cols-8 gap-2 items-center text-sm font-semibold text-slate-700">
-                <div className="col-span-2">שם הליד</div>
-                <div className="col-span-1">טלפון</div>
-                <div className="col-span-1">סטטוס</div>
-                <div className="col-span-1">תאריך</div>
-                <div className="col-span-1">מחיר</div>
-                <div className="col-span-2">הערות</div>
+              <div className="grid grid-cols-8 gap-2 items-center text-sm">
+                <div className="col-span-2">
+                  <SortableHeader
+                    label="שם הליד"
+                    field="name"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1 font-semibold text-slate-700">טלפון</div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="סטטוס"
+                    field="status"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="תאריך"
+                    field="date"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1 font-semibold text-slate-700">מחיר</div>
+                <div className="col-span-2 font-semibold text-slate-700">הערות</div>
               </div>
             ) : (
               // Admin/Coordinator view - all columns
-              <div className="grid grid-cols-12 gap-2 items-center text-sm font-semibold text-slate-700">
-                <div className="col-span-1">שם הליד</div>
-                <div className="col-span-1">טלפון</div>
-                <div className="col-span-1">מקור</div>
-                <div className="col-span-1">רלוונטיות</div>
-                <div className="col-span-1">סטטוס</div>
-                <div className="col-span-1">סוכן</div>
-                <div className="col-span-1">תאריך</div>
-                <div className="col-span-1">מחיר</div>
-                <div className="col-span-3">הערות</div>
-                <div className="col-span-1 text-right">מחיקה</div>
+              <div className="grid grid-cols-12 gap-2 items-center text-sm">
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="שם הליד"
+                    field="name"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1 font-semibold text-slate-700">טלפון</div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="מקור"
+                    field="source"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="רלוונטיות"
+                    field="relevance"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="סטטוס"
+                    field="status"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="סוכן"
+                    field="agent"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <SortableHeader
+                    label="תאריך"
+                    field="date"
+                    currentSort={sortBy}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </div>
+                <div className="col-span-1 font-semibold text-slate-700">מחיר</div>
+                <div className="col-span-3 font-semibold text-slate-700">הערות</div>
+                <div className="col-span-1 text-right font-semibold text-slate-700">מחיקה</div>
               </div>
             )}
           </div>
         </div>
 
         {/* Leads Display - Mobile Cards / Desktop Table */}
-        <div className="bg-white rounded-xl md:rounded-none md:border-x md:border-b border-slate-100 md:shadow-sm overflow-hidden animate-fade-in-up animation-delay-500">
+        <div className="bg-white rounded-xl md:rounded-none md:border-x md:border-b border-slate-100 md:shadow-sm animate-fade-in-up animation-delay-500">
           {/* Mobile Card Layout */}
           <div className="block md:hidden">
             {/* Pull to Refresh Indicator */}
@@ -628,7 +729,7 @@ export default function LeadsPage({
                                     onChange={(value) => handleUpdateLeadField(lead.id, 'assigned_agent_id', value || null)}
                                     options={[
                                       { id: '', label: 'לא משויך' },
-                                      ...dbAgents.map(a => ({
+                                      ...dbAgents.filter(a => a.role === 'agent' || a.role === 'admin').map(a => ({
                                         id: a.id,
                                         label: a.name
                                       }))
@@ -1146,10 +1247,10 @@ export default function LeadsPage({
                               {(user?.role === 'admin' || user?.role === 'coordinator') ? (
                                 <ModernSelector
                                   value={lead.assigned_agent_id || ''}
-                                  onChange={(value) => handleUpdateLeadField(lead.id, 'assigned_agent_id', value)}
+                                  onChange={(value) => handleUpdateLeadField(lead.id, 'assigned_agent_id', value || null)}
                                   options={[
                                     { id: '', label: 'ללא סוכן', lightBg: 'bg-slate-100', text: 'text-slate-600' },
-                                    ...dbAgents.filter(a => a.role === 'agent').map(a => ({
+                                    ...dbAgents.filter(a => a.role === 'agent' || a.role === 'admin').map(a => ({
                                       id: a.id,
                                       label: a.name,
                                       lightBg: 'bg-blue-50',

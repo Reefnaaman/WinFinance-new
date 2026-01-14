@@ -4,7 +4,9 @@ import React from 'react';
 import AgentFilter from './AgentFilter';
 import StatusFilter, { StatusOption } from './StatusFilter';
 import SourceFilter, { SourceOption } from './SourceFilter';
-import SortingDropdown from './SortingDropdown';
+import RelevanceFilter, { RelevanceOption } from './RelevanceFilter';
+import TimeRangeFilter, { DEFAULT_TIME_RANGES } from '../dashboard/TimeRangeFilter';
+import { DateRange } from '../dashboard/DateRangePicker';
 import { Agent } from '@/lib/database.types';
 
 // ============================================================================
@@ -31,12 +33,26 @@ export interface FiltersBarProps {
   activeSource: string;
   /** Function to handle source filter changes */
   setActiveSource: (source: string) => void;
+  /** Current selected relevance */
+  activeRelevance: string;
+  /** Function to handle relevance filter changes */
+  setActiveRelevance: (relevance: string) => void;
+  /** Current time range */
+  timeRange: string;
+  /** Function to handle time range changes */
+  setTimeRange: (range: string) => void;
+  /** Custom date range for when timeRange is 'custom' */
+  customDateRange: DateRange;
+  /** Function to update custom date range */
+  setCustomDateRange: (range: DateRange) => void;
   /** Array of available agents */
   agents: Agent[];
   /** Array of available statuses */
   statuses: StatusOption[];
   /** Array of available sources */
   sources: SourceOption[];
+  /** Array of available relevance statuses */
+  relevanceStatuses: RelevanceOption[];
   /** Show filter result counts */
   showCounts?: boolean;
   /** Lead counts per filter */
@@ -44,16 +60,12 @@ export interface FiltersBarProps {
     agents: Record<string, number>;
     statuses: Record<string, number>;
     sources: Record<string, number>;
+    relevance: Record<string, number>;
   };
   /** Optional CSS class name */
   className?: string;
   /** Children for action buttons */
   children?: React.ReactNode;
-  /** Sorting state */
-  sortBy: 'status' | 'date' | 'name' | 'agent';
-  setSortBy: (sort: 'status' | 'date' | 'name' | 'agent') => void;
-  sortOrder: 'asc' | 'desc';
-  setSortOrder: (order: 'asc' | 'desc') => void;
   /** Total leads count */
   totalLeads?: number;
 }
@@ -87,22 +99,24 @@ export default function FiltersBar({
   setActiveStatus,
   activeSource,
   setActiveSource,
+  activeRelevance,
+  setActiveRelevance,
+  timeRange,
+  setTimeRange,
+  customDateRange,
+  setCustomDateRange,
   agents,
   statuses,
   sources,
+  relevanceStatuses,
   showCounts = false,
   filterCounts,
   className = "",
   children,
-  sortBy,
-  setSortBy,
-  sortOrder,
-  setSortOrder,
   totalLeads = 0
 }: FiltersBarProps) {
   // State for mobile filter panel
   const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false);
-  const [mobileSortOpen, setMobileSortOpen] = React.useState(false);
 
   // ============================================================================
   // COMPUTED VALUES
@@ -113,6 +127,8 @@ export default function FiltersBar({
     activeAgent !== 'all',
     activeStatus !== 'all',
     activeSource !== 'all',
+    activeRelevance !== 'all',
+    timeRange !== 'current_month',
     searchTerm.length > 0
   ].filter(Boolean).length;
 
@@ -124,6 +140,8 @@ export default function FiltersBar({
     setActiveAgent('all');
     setActiveStatus('all');
     setActiveSource('all');
+    setActiveRelevance('all');
+    setTimeRange('current_month');
     setSearchTerm('');
   };
 
@@ -198,12 +216,11 @@ export default function FiltersBar({
           {children}
         </div>
 
-        {/* Filter and Sort Buttons Row */}
-        <div className="flex gap-2 mt-3">
-          {/* Filter Button */}
+        {/* Filter Button */}
+        <div className="mt-3">
           <button
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-            className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 border border-blue-200 transition-all"
+            className="w-full px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 border border-blue-200 transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -215,23 +232,25 @@ export default function FiltersBar({
               </span>
             )}
           </button>
-
-          {/* Sort Button - Purple styled like Filter button */}
-          <button
-            onClick={() => setMobileSortOpen(!mobileSortOpen)}
-            className="flex-1 px-3 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 border border-purple-200 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-            </svg>
-            <span>מיון על פי</span>
-          </button>
         </div>
 
         {/* Collapsible Filter Panel */}
         {mobileFiltersOpen && (
           <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3 animate-in slide-in-from-top-2 duration-200">
-            <div className="grid grid-cols-3 gap-2">
+            {/* Date Range Filter */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">תקופה</label>
+              <TimeRangeFilter
+                timeRange={timeRange}
+                setTimeRange={setTimeRange}
+                timeRanges={DEFAULT_TIME_RANGES}
+                customDateRange={customDateRange}
+                onCustomDateRangeChange={setCustomDateRange}
+                className="w-full"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">סוכן</label>
                 <AgentFilter
@@ -267,6 +286,18 @@ export default function FiltersBar({
                   width="sm"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">רלוונטיות</label>
+                <RelevanceFilter
+                  value={activeRelevance}
+                  onChange={setActiveRelevance}
+                  relevanceStatuses={relevanceStatuses}
+                  showCounts={false}
+                  leadCounts={filterCounts?.relevance}
+                  width="sm"
+                />
+              </div>
             </div>
 
             {/* Clear Filters Button */}
@@ -281,61 +312,6 @@ export default function FiltersBar({
           </div>
         )}
 
-        {/* Collapsible Sort Panel */}
-        {mobileSortOpen && (
-          <div className="mt-3 p-2 bg-purple-50 rounded-lg border border-purple-200 animate-in slide-in-from-top-2 duration-200">
-            <div className="flex gap-2">
-              {/* Sort Options - 3 buttons */}
-              <button
-                onClick={() => setSortBy('status')}
-                className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  sortBy === 'status'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white text-purple-700 hover:bg-purple-100'
-                } border border-purple-300`}
-              >
-                סטטוס
-              </button>
-              <button
-                onClick={() => setSortBy('date')}
-                className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  sortBy === 'date'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white text-purple-700 hover:bg-purple-100'
-                } border border-purple-300`}
-              >
-                תאריך
-              </button>
-              <button
-                onClick={() => setSortBy('agent')}
-                className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  sortBy === 'agent'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white text-purple-700 hover:bg-purple-100'
-                } border border-purple-300`}
-              >
-                סוכן
-              </button>
-
-              {/* Sort Direction Toggle */}
-              <button
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="px-3 py-1.5 bg-white hover:bg-purple-100 rounded-lg transition-colors border border-purple-300"
-                title={sortOrder === 'asc' ? 'סדר עולה' : 'סדר יורד'}
-              >
-                {sortOrder === 'asc' ? (
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Desktop Filters Grid */}
@@ -372,9 +348,9 @@ export default function FiltersBar({
               )}
             </div>
 
-            {/* Action Buttons - Below Search on Desktop */}
+            {/* Action Buttons - Below Search with same width */}
             {children && (
-              <div className="flex items-center gap-1 md:gap-2 mt-2">
+              <div className="w-64 mt-2">
                 {children}
               </div>
             )}
@@ -393,7 +369,20 @@ export default function FiltersBar({
             </div>
 
             {/* Filter controls */}
-            <div className="border border-t-0 border-blue-200 rounded-b-lg p-2 bg-white">
+            <div className="border border-t-0 border-blue-200 rounded-b-lg p-2 bg-white space-y-3">
+              {/* Date Range Filter - Full Width */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">תקופה</label>
+                <TimeRangeFilter
+                  timeRange={timeRange}
+                  setTimeRange={setTimeRange}
+                  timeRanges={DEFAULT_TIME_RANGES}
+                  customDateRange={customDateRange}
+                  onCustomDateRangeChange={setCustomDateRange}
+                  className="w-full"
+                />
+              </div>
+
               <div className="flex gap-2">
                 {/* Agent Filter */}
                 <div className="flex-1">
@@ -436,32 +425,24 @@ export default function FiltersBar({
                     leadCounts={filterCounts?.sources}
                   />
                 </div>
+
+                {/* Relevance Filter */}
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    רלוונטיות
+                  </label>
+                  <RelevanceFilter
+                    value={activeRelevance}
+                    onChange={setActiveRelevance}
+                    relevanceStatuses={relevanceStatuses}
+                    showCounts={false}
+                    leadCounts={filterCounts?.relevance}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Sorting Section */}
-          <div className="hidden md:block ml-3">
-              {/* Sort Header */}
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 border border-purple-200 rounded-t-lg px-3 py-1.5">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                  </svg>
-                  <span className="text-xs font-semibold text-purple-700">מיון על פי</span>
-                </div>
-              </div>
-
-              {/* Sort controls */}
-              <div className="border border-t-0 border-purple-200 rounded-b-lg p-2 bg-white">
-                <SortingDropdown
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                  sortOrder={sortOrder}
-                  setSortOrder={setSortOrder}
-                />
-              </div>
-            </div>
 
         </div>
       </div>
@@ -471,6 +452,13 @@ export default function FiltersBar({
         <div className="hidden md:block border-t border-slate-100 px-6 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-slate-600">סינונים פעילים:</span>
+
+            {timeRange !== 'current_month' && (
+              <span className="inline-flex items-center px-2 py-1 text-xs bg-indigo-50 text-indigo-700 rounded-md">
+                תקופה: {DEFAULT_TIME_RANGES.find(t => t.id === timeRange)?.label || 'מותאם אישית'}
+                <button onClick={() => setTimeRange('current_month')} className="mr-1 text-indigo-500 hover:text-indigo-700">×</button>
+              </span>
+            )}
 
             {activeAgent !== 'all' && (
               <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-md">
@@ -490,6 +478,13 @@ export default function FiltersBar({
               <span className="inline-flex items-center px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded-md">
                 מקור: {sources.find(s => s.id === activeSource)?.label || 'לא ידוע'}
                 <button onClick={() => setActiveSource('all')} className="mr-1 text-purple-500 hover:text-purple-700">×</button>
+              </span>
+            )}
+
+            {activeRelevance !== 'all' && (
+              <span className="inline-flex items-center px-2 py-1 text-xs bg-teal-50 text-teal-700 rounded-md">
+                רלוונטיות: {relevanceStatuses.find(r => r.id === activeRelevance)?.label || 'לא ידוע'}
+                <button onClick={() => setActiveRelevance('all')} className="mr-1 text-teal-500 hover:text-teal-700">×</button>
               </span>
             )}
 

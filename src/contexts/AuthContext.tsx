@@ -78,17 +78,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Fetching user data for email:', email)
       console.log('Attempting database query...')
 
+      // Add timeout promise to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
+      })
+
       // Fetch from the database with proper retry logic
       let retries = 3
       let lastError = null
 
       while (retries > 0) {
         try {
-          const { data, error } = await supabase
+          console.log(`Query attempt ${4 - retries}/3`)
+
+          const queryPromise = supabase
             .from('agents')
             .select('*')
             .eq('email', email)
             .single()
+
+          const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
 
           if (data && !error) {
             console.log('Agent query successful:', { data, email })
@@ -108,8 +117,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
             }
           }
-        } catch (err) {
+        } catch (err: any) {
           lastError = err
+          console.log(`Query attempt error (${4 - retries}/3):`, err.message)
           retries--
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))

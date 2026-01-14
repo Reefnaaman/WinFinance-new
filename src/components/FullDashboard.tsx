@@ -9,8 +9,9 @@ import LeadsPage from './leads/LeadsPage';
 import SettingsPage from './settings/SettingsPage';
 import HomePage from './dashboard/HomePage';
 import SupplierDashboard from './supplier/SupplierDashboard';
-import { getDateRange } from './shared/leadUtils';
+import { getDateRange, getDateRangeWithEnd } from './shared/leadUtils';
 import { calculateAnalytics } from './dashboard/analyticsUtils';
+import { DateRange } from './dashboard/DateRangePicker';
 import Image from 'next/image';
 
 export default function FullDashboard() {
@@ -19,9 +20,14 @@ export default function FullDashboard() {
   const [activeAgent, setActiveAgent] = useState('all');
   const [activeStatus, setActiveStatus] = useState('all');
   const [activeSource, setActiveSource] = useState('all');
+  const [activeRelevance, setActiveRelevance] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('month');
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+    endDate: new Date()
+  });
 
   // Database data
   const [dbLeads, setDbLeads] = useState<Lead[]>([]);
@@ -42,7 +48,7 @@ export default function FullDashboard() {
   const [pullDistance, setPullDistance] = useState(0);
 
   // Sorting state
-  const [sortBy, setSortBy] = useState<'status' | 'date' | 'name' | 'agent'>('date');
+  const [sortBy, setSortBy] = useState<'status' | 'date' | 'name' | 'agent' | 'relevance' | 'source'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Handle pull to refresh
@@ -138,7 +144,8 @@ export default function FullDashboard() {
   // Dynamic sources - includes lead providers
   const leadProviders = dbAgents.filter(agent => agent.role === 'lead_supplier');
   const sources = [
-    { id: 'Email', label: 'Email', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'Email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'Excel Import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
     ...leadProviders.map((provider, index) => ({
       id: provider.name,
       label: provider.name,
@@ -176,16 +183,18 @@ export default function FullDashboard() {
   const filterCounts = {
     agents: {} as Record<string, number>,
     statuses: {} as Record<string, number>,
-    sources: {} as Record<string, number>
+    sources: {} as Record<string, number>,
+    relevance: {} as Record<string, number>
   };
 
   // Initialize counts
   filterCounts.agents['all'] = dbLeads.length;
   filterCounts.statuses['all'] = dbLeads.length;
   filterCounts.sources['all'] = dbLeads.length;
+  filterCounts.relevance['all'] = dbLeads.length;
 
-  // Count leads per agent (only for agents)
-  const agentsList = dbAgents.filter(agent => agent.role === 'agent');
+  // Count leads per agent (agents and admin can have leads)
+  const agentsList = dbAgents.filter(agent => agent.role === 'agent' || agent.role === 'admin');
   agentsList.forEach(agent => {
     filterCounts.agents[agent.id] = dbLeads.filter(lead => lead.assigned_agent_id === agent.id).length;
   });
@@ -198,6 +207,11 @@ export default function FullDashboard() {
   // Count leads per source
   sources.forEach(source => {
     filterCounts.sources[source.id] = dbLeads.filter(lead => lead.source === source.id).length;
+  });
+
+  // Count leads per relevance status
+  relevanceStatuses.forEach(relevance => {
+    filterCounts.relevance[relevance.id] = dbLeads.filter(lead => lead.relevance_status === relevance.id).length;
   });
 
   const filteredLeads = dbLeads.filter(lead => {
@@ -214,11 +228,24 @@ export default function FullDashboard() {
     }
 
     // Time-based filtering based on lead creation date
-    const filterDate = getDateRange(timeRange);
-    if (filterDate) {
-      const leadCreatedDate = new Date(lead.created_at);
-      if (leadCreatedDate < filterDate) {
+    const leadCreatedDate = new Date(lead.created_at);
+    if (timeRange === 'custom' && customDateRange) {
+      // Custom date range filtering
+      const startOfDay = new Date(customDateRange.startDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(customDateRange.endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      if (leadCreatedDate < startOfDay || leadCreatedDate > endOfDay) {
         return false;
+      }
+    } else {
+      // Preset date range filtering
+      const filterDate = getDateRange(timeRange);
+      if (filterDate) {
+        if (leadCreatedDate < filterDate) {
+          return false;
+        }
       }
     }
 
@@ -231,12 +258,15 @@ export default function FullDashboard() {
     // Source filtering
     const matchesSource = activeSource === 'all' || lead.source === activeSource;
 
+    // Relevance filtering
+    const matchesRelevance = activeRelevance === 'all' || lead.relevance_status === activeRelevance;
+
     // Search filtering
     const matchesSearch = searchTerm === '' ||
                           lead.lead_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           lead.phone.includes(searchTerm);
 
-    return matchesAgent && matchesStatus && matchesSource && matchesSearch;
+    return matchesAgent && matchesStatus && matchesSource && matchesRelevance && matchesSearch;
   });
 
   // Sort filtered leads
@@ -289,6 +319,26 @@ export default function FullDashboard() {
         const aAgent = dbAgents.find(agent => agent.id === a.assigned_agent_id)?.name || 'zzz';
         const bAgent = dbAgents.find(agent => agent.id === b.assigned_agent_id)?.name || 'zzz';
         comparison = aAgent.localeCompare(bAgent, 'he');
+        break;
+
+      case 'relevance':
+        // Define relevance priority (pending first, then relevant)
+        const relevancePriority: Record<string, number> = {
+          'ממתין לבדיקה': 1,
+          'רלוונטי': 2,
+          'במעקב': 3,
+          'לא רלוונטי': 4
+        };
+        const aRelevancePriority = relevancePriority[a.relevance_status || ''] || 999;
+        const bRelevancePriority = relevancePriority[b.relevance_status || ''] || 999;
+        comparison = aRelevancePriority - bRelevancePriority;
+        break;
+
+      case 'source':
+        // Sort sources alphabetically
+        const aSource = a.source || 'zzz';
+        const bSource = b.source || 'zzz';
+        comparison = aSource.localeCompare(bSource, 'he');
         break;
     }
 
@@ -415,7 +465,7 @@ export default function FullDashboard() {
       <main className="max-w-none mx-auto px-2 sm:px-4 py-6 md:py-8">
         {currentPage === 'home' && (
           <HomePage
-            dbLeads={dbLeads}
+            dbLeads={filteredLeads}
             dbAgents={dbAgents}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
@@ -438,6 +488,8 @@ export default function FullDashboard() {
             setActiveStatus={setActiveStatus}
             activeSource={activeSource}
             setActiveSource={setActiveSource}
+            activeRelevance={activeRelevance}
+            setActiveRelevance={setActiveRelevance}
             filterCounts={filterCounts}
             fetchData={fetchData}
             canCreateLeads={canCreateLeads}
@@ -453,6 +505,10 @@ export default function FullDashboard() {
             pullDistance={pullDistance}
             handleRefresh={handleRefresh}
             setPullDistance={setPullDistance}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+            customDateRange={customDateRange}
+            setCustomDateRange={setCustomDateRange}
           />
         )}
         {currentPage === 'settings' && (

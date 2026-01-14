@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import CompactKPICard from './CompactKPICard';
 import TimeRangeFilter, { DEFAULT_TIME_RANGES } from './TimeRangeFilter';
+import { DateRange } from './DateRangePicker';
 import {
   AnalyticsData,
   calculateMonthOverMonth,
@@ -29,6 +30,8 @@ export interface EnhancedWelcomeBannerProps {
   setTimeRange: (range: string) => void;
   currentUser?: Agent | null;
   className?: string;
+  customDateRange?: DateRange;
+  onCustomDateRangeChange?: (dateRange: DateRange) => void;
 }
 
 /**
@@ -48,8 +51,23 @@ export default function EnhancedWelcomeBanner({
   timeRange,
   setTimeRange,
   currentUser,
-  className = ''
+  className = '',
+  customDateRange,
+  onCustomDateRangeChange
 }: EnhancedWelcomeBannerProps) {
+
+  // ============================================================================
+  // STATE MANAGEMENT
+  // ============================================================================
+
+  // Initialize default custom date range if not provided
+  const [defaultCustomRange] = useState<DateRange>(() => {
+    const now = new Date();
+    return {
+      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+      endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    };
+  });
   // Calculate month-over-month data
   const monthData = calculateMonthOverMonth(allLeads);
 
@@ -85,6 +103,8 @@ export default function EnhancedWelcomeBanner({
               timeRanges={DEFAULT_TIME_RANGES}
               className="text-white"
               glassMorphism={true}
+              customDateRange={customDateRange || defaultCustomRange}
+              onCustomDateRangeChange={onCustomDateRangeChange}
             />
           </div>
         </div>

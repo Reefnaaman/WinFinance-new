@@ -1,10 +1,11 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Lead, Agent } from '@/lib/database.types';
 import { calculateAnalytics } from './analyticsUtils';
 // Enhanced components only
 import EnhancedWelcomeBanner from './EnhancedWelcomeBanner';
+import { DateRange } from './DateRangePicker';
 import EnhancedAgentLeaderboard from './EnhancedAgentLeaderboard';
 import SourceEffectivenessChart from './SourceEffectivenessChart';
 import ModernCompactStatusChart from './ModernCompactStatusChart';
@@ -63,6 +64,19 @@ export default function HomePage({
   className = "",
   loading = false
 }: HomePageProps) {
+  // ============================================================================
+  // STATE MANAGEMENT
+  // ============================================================================
+
+  // Custom date range state for date picker
+  const [customDateRange, setCustomDateRange] = useState<DateRange>(() => {
+    const now = new Date();
+    return {
+      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+      endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    };
+  });
+
   // ============================================================================
   // CALCULATE ANALYTICS DATA
   // ============================================================================
@@ -135,6 +149,8 @@ export default function HomePage({
           timeRange={timeRange}
           setTimeRange={setTimeRange}
           currentUser={currentUser}
+          customDateRange={customDateRange}
+          onCustomDateRangeChange={setCustomDateRange}
         />
       </div>
 
