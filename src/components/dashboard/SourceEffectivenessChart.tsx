@@ -86,7 +86,7 @@ export default function SourceEffectivenessChart({
             יעילות מקורות
           </h3>
           <p className="text-xs text-gray-500">
-            הכנסות ואחוזי המרה
+            סכום סגירות ואחוזי המרה
           </p>
         </div>
         <TrendingUp className="w-5 h-5 text-blue-500" />
@@ -299,7 +299,7 @@ export default function SourceEffectivenessChart({
                           ? `${(source.revenue / 1000).toFixed(0)}k₪`
                           : `${source.revenue}₪`}
                       </p>
-                      <p className="text-[10px] text-gray-600">הכנסות</p>
+                      <p className="text-[10px] text-gray-600">סכום סגירות</p>
                     </div>
                   </div>
                 </div>

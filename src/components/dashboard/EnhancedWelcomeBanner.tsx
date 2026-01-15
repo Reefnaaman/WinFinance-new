@@ -115,7 +115,7 @@ export default function EnhancedWelcomeBanner({
           {currentUser?.role !== 'coordinator' && (
             <div className="animate-fade-in-scale animation-delay-200">
               <CompactKPICard
-                title="הכנסות"
+                title="סכום סגירות"
                 value={analyticsData.totalRevenue}
                 format="currency"
                 change={monthData.changes.revenueChangePercent}

@@ -154,9 +154,9 @@ export default function HomePage({
         />
       </div>
 
-      {/* Enhanced Analytics Charts - All in one row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Modern Compact Status Chart with Donut */}
+      {/* Enhanced Analytics Charts - Conditional based on user role */}
+      <div className={`grid grid-cols-1 ${currentUser?.role === 'agent' ? 'lg:grid-cols-1' : 'lg:grid-cols-3'} gap-4 md:gap-6`}>
+        {/* Modern Compact Status Chart with Donut - Always show */}
         <div className="animate-fade-in-up animation-delay-200 card-hover-lift">
           <ModernCompactStatusChart
             analyticsLeads={analyticsLeads}
@@ -165,22 +165,26 @@ export default function HomePage({
           />
         </div>
 
-        {/* Enhanced Agent Leaderboard - Narrower */}
-        <div className="animate-fade-in-up animation-delay-300 card-hover-lift">
-          <EnhancedAgentLeaderboard
-            analyticsLeads={analyticsLeads}
-            dbAgents={dbAgents}
-            className=""
-          />
-        </div>
+        {/* Enhanced Agent Leaderboard - Only show for non-agents */}
+        {currentUser?.role !== 'agent' && (
+          <div className="animate-fade-in-up animation-delay-300 card-hover-lift">
+            <EnhancedAgentLeaderboard
+              analyticsLeads={analyticsLeads}
+              dbAgents={dbAgents}
+              className=""
+            />
+          </div>
+        )}
 
-        {/* Source Effectiveness Chart - Compact */}
-        <div className="animate-fade-in-up animation-delay-400 card-hover-lift">
-          <SourceEffectivenessChart
-            analyticsLeads={analyticsLeads}
-            className=""
-          />
-        </div>
+        {/* Source Effectiveness Chart - Only show for non-agents */}
+        {currentUser?.role !== 'agent' && (
+          <div className="animate-fade-in-up animation-delay-400 card-hover-lift">
+            <SourceEffectivenessChart
+              analyticsLeads={analyticsLeads}
+              className=""
+            />
+          </div>
+        )}
       </div>
     </div>
   );

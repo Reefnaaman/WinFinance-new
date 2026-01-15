@@ -218,7 +218,6 @@ export default function FullDashboard() {
     // Role-based filtering: agents only see their assigned leads
     if (user?.role === 'agent') {
       const matches = lead.assigned_agent_id === user.id;
-      // Remove debug logging that's flooding console
       return matches;
     }
 
