@@ -424,7 +424,15 @@ export default function FullDashboard() {
               </div>
               <p className="text-sm font-medium text-slate-700">{user.name}</p>
               <button
-                onClick={logout}
+                onClick={async () => {
+                  try {
+                    await logout();
+                    // Force a page reload to ensure clean state
+                    window.location.href = '/';
+                  } catch (error) {
+                    console.error('Logout failed:', error);
+                  }
+                }}
                 className="ml-2 px-3 py-1.5 text-sm text-slate-800 bg-red-500/30 hover:text-slate-900 hover:bg-red-500/40 rounded-lg transition-colors"
               >
                 יציאה

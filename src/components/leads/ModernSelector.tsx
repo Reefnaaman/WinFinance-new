@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 interface SelectorOption {
   id: string;
@@ -32,12 +32,49 @@ export default function ModernSelector({
   compact = false
 }: ModernSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const selectedOption = options.find(opt => opt.id === value);
+
+  // Calculate dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = 240; // max-width of dropdown
+      const viewportWidth = window.innerWidth;
+      const isMobile = viewportWidth < 768; // Mobile breakpoint
+
+      if (isMobile) {
+        // Center the dropdown on mobile
+        const buttonCenter = buttonRect.left + (buttonRect.width / 2);
+        const dropdownLeft = buttonCenter - (dropdownWidth / 2);
+
+        // Ensure it doesn't go off screen
+        const finalLeft = Math.max(10, Math.min(dropdownLeft, viewportWidth - dropdownWidth - 10));
+
+        setDropdownStyle({
+          left: `${finalLeft - buttonRect.left}px`,
+          right: 'auto'
+        });
+      } else {
+        // Desktop: align left or right based on available space
+        const spaceOnRight = viewportWidth - buttonRect.left;
+
+        if (spaceOnRight < dropdownWidth + 20) {
+          setDropdownStyle({ right: '0', left: 'auto' });
+        } else {
+          setDropdownStyle({ left: '0', right: 'auto' });
+        }
+      }
+    }
+  }, [isOpen]);
 
   return (
     <div className="relative inline-block">
       {/* Button - always visible */}
       <button
+        ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
@@ -69,13 +106,16 @@ export default function ModernSelector({
           />
 
           {/* Options container - positioned below the button */}
-          <div className={`
-            absolute top-full mt-1 left-0 z-[101]
+          <div
+            ref={dropdownRef}
+            style={dropdownStyle}
+            className={`
+            absolute top-full mt-1 z-[101]
             ${compact ? 'flex flex-wrap gap-1' : 'grid grid-cols-2 gap-1.5'}
             p-2 bg-white rounded-lg shadow-xl border border-slate-200
             transition-all duration-200 transform origin-top
             max-w-[240px] min-w-[200px]
-          `} style={{ position: 'absolute' }}>
+          `}>
             {options.map((option) => (
               <button
                 key={option.id}
