@@ -60,8 +60,8 @@ export default function AgentFilter({
   // PREPARE FILTER OPTIONS
   // ============================================================================
 
-  // Filter out non-agent users (only show actual agents)
-  const agentsList = agents.filter(agent => agent.role === 'agent');
+  // Filter to show agents and admin (both can be assigned leads)
+  const agentsList = agents.filter(agent => agent.role === 'agent' || agent.role === 'admin');
 
   // Build filter options array
   const filterOptions: FilterOption[] = [

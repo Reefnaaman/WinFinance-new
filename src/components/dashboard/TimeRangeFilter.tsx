@@ -1,23 +1,31 @@
 'use client'
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Calendar, ChevronDown } from 'lucide-react';
+import Portal from '../ui/Portal';
 
 // ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
 
 /**
- * Time range option definition
- * Extracted from: FullDashboard_backup.tsx lines 118-123
+ * Date range interface for custom selections
+ */
+export interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
+/**
+ * Time range option definition - Modern simplified approach
  */
 export interface TimeRangeOption {
-  id: 'week' | 'month' | '3months' | 'year';
+  id: 'current_month' | 'current_quarter' | 'current_year' | 'custom';
   label: string;
 }
 
 /**
- * TimeRangeFilter component props
- * Extracted from: FullDashboard_backup.tsx lines 350-367
+ * TimeRangeFilter component props - Clean and modern
  */
 export interface TimeRangeFilterProps {
   /** Currently selected time range ID */
@@ -30,6 +38,10 @@ export interface TimeRangeFilterProps {
   className?: string;
   /** Use glass morphism styling */
   glassMorphism?: boolean;
+  /** Custom date range for when timeRange is 'custom' */
+  customDateRange?: DateRange;
+  /** Function to update custom date range */
+  onCustomDateRangeChange?: (dateRange: DateRange) => void;
 }
 
 // ============================================================================
@@ -37,14 +49,22 @@ export interface TimeRangeFilterProps {
 // ============================================================================
 
 /**
- * Default time range options (Hebrew labels)
- * Extracted from: FullDashboard_backup.tsx lines 118-123
+ * Modern simplified time range options (Hebrew labels)
+ * Following 2024-2025 best practices - minimal and clean
  */
 export const DEFAULT_TIME_RANGES: TimeRangeOption[] = [
-  { id: 'week', label: 'שבוע' },
-  { id: 'month', label: 'חודש' },
-  { id: '3months', label: '3 חודשים' },
-  { id: 'year', label: 'שנה' },
+  { id: 'current_month', label: 'החודש' },
+  { id: 'current_quarter', label: 'הרבעון' },
+  { id: 'current_year', label: 'השנה' },
+  { id: 'custom', label: 'בחירה מותאמת' },
+];
+
+/**
+ * Hebrew months for date formatting
+ */
+const HEBREW_MONTHS = [
+  'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+  'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'
 ];
 
 // ============================================================================
@@ -52,11 +72,15 @@ export const DEFAULT_TIME_RANGES: TimeRangeOption[] = [
 // ============================================================================
 
 /**
- * TimeRangeFilter Component
+ * Modern TimeRangeFilter Component
  *
- * PURPOSE: Renders a responsive time range selection filter
- * EXTRACTED FROM: FullDashboard_backup.tsx lines 351-367
- * MOBILE-FIRST: Optimized for touch interactions
+ * DESIGN: 2024-2025 modern standards with hybrid approach
+ * FEATURES:
+ * - Clean dropdown with preset options
+ * - Inline date inputs for custom range
+ * - Proper RTL Hebrew support
+ * - Mobile-first responsive design
+ * - Native-feeling interactions
  *
  * @param props TimeRangeFilterProps
  * @returns JSX.Element
@@ -66,51 +90,198 @@ export default function TimeRangeFilter({
   setTimeRange,
   timeRanges,
   className = "",
-  glassMorphism = false
+  glassMorphism = false,
+  customDateRange,
+  onCustomDateRangeChange
 }: TimeRangeFilterProps) {
+
+  // ============================================================================
+  // STATE MANAGEMENT
+  // ============================================================================
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [showCustomInputs, setShowCustomInputs] = useState(timeRange === 'custom');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // ============================================================================
+  // EVENT HANDLERS & EFFECTS
+  // ============================================================================
+
+  // No manual click-outside needed - using backdrop approach
+
+  // Show/hide custom inputs based on selection
+  useEffect(() => {
+    setShowCustomInputs(timeRange === 'custom');
+  }, [timeRange]);
+
+  const handleOptionSelect = (rangeId: string) => {
+    setTimeRange(rangeId);
+    // Only close the dropdown if NOT selecting custom
+    if (rangeId !== 'custom') {
+      setIsOpen(false);
+      setShowCustomInputs(false);
+    } else {
+      // Keep dropdown open when selecting custom
+      setShowCustomInputs(true);
+    }
+  };
+
+  const handleCustomDateChange = (field: 'start' | 'end', value: string) => {
+    if (!customDateRange || !onCustomDateRangeChange) return;
+
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return;
+
+    const newRange = {
+      startDate: field === 'start' ? date : customDateRange.startDate,
+      endDate: field === 'end' ? date : customDateRange.endDate,
+    };
+
+    onCustomDateRangeChange(newRange);
+  };
+
+  // ============================================================================
+  // HELPER FUNCTIONS
+  // ============================================================================
+
+  const getDisplayLabel = () => {
+    if (timeRange === 'custom' && customDateRange) {
+      const start = customDateRange.startDate;
+      const end = customDateRange.endDate;
+
+      // Smart formatting based on date range
+      if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
+        return `${HEBREW_MONTHS[start.getMonth()]} ${start.getFullYear()}`;
+      }
+
+      const startStr = `${HEBREW_MONTHS[start.getMonth()]} ${start.getFullYear()}`;
+      const endStr = `${HEBREW_MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+      return `${startStr} - ${endStr}`;
+    }
+
+    const option = timeRanges.find(r => r.id === timeRange);
+    return option?.label || 'בחר תקופה';
+  };
+
+  const formatDateForInput = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
 
   // ============================================================================
   // RENDER
   // ============================================================================
 
   return (
-    <div className={`flex justify-center md:justify-end ${className}`}>
-      <div className={`
-        flex items-center gap-1 rounded-lg md:rounded-xl p-0.5 md:p-1 w-full md:w-auto
-        ${glassMorphism
-          ? 'bg-white/20 backdrop-blur-sm border border-white/30'
-          : 'bg-white shadow-sm border border-slate-100'
-        }
-      `}>
-        {timeRanges.map((range) => (
-          <button
-            key={range.id}
-            onClick={() => setTimeRange(range.id)}
-            className={`
-              /* BASE LAYOUT */
-              flex-1 md:flex-none px-2 md:px-4 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      {/* Modern Filter Button */}
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          flex items-center gap-2 px-3 md:px-4 py-2.5 rounded-xl text-sm font-medium transition-all
+          min-h-[44px] min-w-[140px] justify-between
+          ${glassMorphism
+            ? 'bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/25 shadow-lg'
+            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm'
+          }
+          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none
+        `}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+      >
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 flex-shrink-0" />
+          <span className="truncate">{getDisplayLabel()}</span>
+        </div>
+        <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
 
-              /* TRANSITIONS */
-              transition-all
+      {/* Portal Dropdown Menu - Escapes all stacking contexts */}
+      {isOpen && (
+        <>
+          {/* Backdrop to close */}
+          <div
+            className="fixed inset-0"
+            style={{ zIndex: 999998 }}
+            onClick={() => setIsOpen(false)}
+          />
 
-              /* MOBILE TOUCH TARGET - Smaller on mobile */
-              min-h-[32px] md:min-h-[40px] flex items-center justify-center
+          <Portal triggerElement={buttonRef.current} placement="bottom-end">
+            <div
+              ref={dropdownRef}
+              className={`
+                w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-visible
+                ${glassMorphism ? 'backdrop-blur-md bg-white/95' : ''}
+              `}
+            >
+          {/* Preset Options */}
+          <div className="p-1">
+            {timeRanges.filter(range => range.id !== 'custom').map((range) => (
+              <button
+                key={range.id}
+                onClick={() => handleOptionSelect(range.id)}
+                className={`
+                  w-full flex items-center px-3 py-2.5 text-right rounded-lg transition-colors
+                  ${timeRange === range.id
+                    ? 'bg-blue-50 text-blue-600 font-medium'
+                    : 'text-slate-700 hover:bg-slate-50'
+                  }
+                `}
+              >
+                {range.label}
+              </button>
+            ))}
 
-              /* ACTIVE/INACTIVE STATES */
-              ${timeRange === range.id
-                ? glassMorphism
-                  ? 'bg-white/30 text-white shadow-sm'
-                  : 'bg-blue-500 text-white shadow-sm'
-                : glassMorphism
-                  ? 'text-white/80 hover:text-white hover:bg-white/10'
-                  : 'text-slate-500 hover:text-slate-700 active:bg-slate-100'
-              }
-            `}
-          >
-            {range.label}
-          </button>
-        ))}
-      </div>
+            {/* Custom Option */}
+            <button
+              onClick={() => handleOptionSelect('custom')}
+              className={`
+                w-full flex items-center px-3 py-2.5 text-right rounded-lg transition-colors
+                ${timeRange === 'custom'
+                  ? 'bg-blue-50 text-blue-600 font-medium'
+                  : 'text-slate-700 hover:bg-slate-50'
+                }
+              `}
+            >
+              בחירה מותאמת
+            </button>
+          </div>
+
+          {/* Custom Date Inputs - Show when custom is selected */}
+          {showCustomInputs && (
+            <div className="border-t border-slate-100 p-4 space-y-3">
+              <div className="text-xs font-medium text-slate-600 mb-3">הגדרת תאריכים</div>
+
+              {/* Start Date */}
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">מתאריך</label>
+                <input
+                  type="date"
+                  value={customDateRange ? formatDateForInput(customDateRange.startDate) : ''}
+                  onChange={(e) => handleCustomDateChange('start', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  dir="ltr"
+                />
+              </div>
+
+              {/* End Date */}
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">עד תאריך</label>
+                <input
+                  type="date"
+                  value={customDateRange ? formatDateForInput(customDateRange.endDate) : ''}
+                  onChange={(e) => handleCustomDateChange('end', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+          )}
+            </div>
+          </Portal>
+        </>
+      )}
     </div>
   );
 }

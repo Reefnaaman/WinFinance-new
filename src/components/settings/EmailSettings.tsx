@@ -8,13 +8,16 @@ export default function EmailSettings() {
   const [testing, setTesting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [showDetailedInstructions, setShowDetailedInstructions] = useState(false);
+  const [autoPolling, setAutoPolling] = useState(false);
+  const [lastPollTime, setLastPollTime] = useState<Date | null>(null);
+  const [pollCount, setPollCount] = useState(0);
   const [formData, setFormData] = useState({
     email_host: 'imap.gmail.com',
     email_port: 993,
     email_username: '',
     email_password: '',
     email_secure: true,
-    monitored_email_addresses: '',
+    monitored_email_addresses: 'leadmail@raion.co.il, reefnoyman55@gmail.com',
     email_enabled: false
   });
 
@@ -22,6 +25,47 @@ export default function EmailSettings() {
   useEffect(() => {
     loadEmailSettings();
   }, []);
+
+  // Auto-polling effect - runs every 10 seconds when enabled
+  useEffect(() => {
+    if (!autoPolling || !formData.email_enabled) return;
+
+    console.log('🔄 Starting auto-polling emails every 10 seconds...');
+
+    const pollEmails = async () => {
+      if (checking) return; // Skip if already checking
+
+      try {
+        console.log(`📧 Auto-poll #${pollCount + 1} at ${new Date().toLocaleTimeString()}`);
+        console.log(`📬 Polling email account: ${formData.email_username || 'Not configured'}`);
+        console.log(`👀 Monitoring addresses: ${formData.monitored_email_addresses || 'All addresses'}`);
+
+        const response = await fetch('/api/check-emails', {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setLastPollTime(new Date());
+          setPollCount(prev => prev + 1);
+          console.log('✅ Auto-poll completed successfully');
+        }
+      } catch (error) {
+        console.error('Auto-poll error:', error);
+      }
+    };
+
+    // Initial poll
+    pollEmails();
+
+    // Set up interval for every 10 seconds
+    const interval = setInterval(pollEmails, 10000);
+
+    return () => {
+      console.log('🛑 Stopping auto-polling');
+      clearInterval(interval);
+    };
+  }, [autoPolling, formData.email_enabled, pollCount]);
 
   const loadEmailSettings = async () => {
     try {
@@ -36,7 +80,9 @@ export default function EmailSettings() {
           email_username: data.settings.email_username || '',
           email_password: data.settings.email_password || '',
           email_secure: data.settings.email_secure !== false,
-          monitored_email_addresses: (data.settings.monitored_email_addresses || []).join(', '),
+          monitored_email_addresses: (data.settings.monitored_email_addresses && data.settings.monitored_email_addresses.length > 0)
+            ? data.settings.monitored_email_addresses.join(', ')
+            : 'leadmail@raion.co.il, reefnoyman55@gmail.com',
           email_enabled: data.settings.email_enabled || false
         });
       }
@@ -250,6 +296,35 @@ export default function EmailSettings() {
             <p className="text-xs text-slate-500 mt-1">
               רשום כתובות מייל מופרדות בפסיקים. רק מיילים מכתובות אלה יעובדו כלידים.
             </p>
+          </div>
+
+          {/* Auto-polling Toggle - FOR TESTING ONLY */}
+          <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+            <div>
+              <h4 className="font-medium text-slate-900">🧪 בדיקה אוטומטית (למפתחים בלבד)</h4>
+              <p className="text-sm text-slate-600">בדוק מיילים כל 10 שניות - לבדיקות מקומיות בלבד</p>
+              {lastPollTime && (
+                <p className="text-xs text-slate-500 mt-1">
+                  בדיקה אחרונה: {lastPollTime.toLocaleTimeString()} | מס׳ בדיקות: {pollCount}
+                </p>
+              )}
+            </div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={autoPolling}
+                onChange={(e) => setAutoPolling(e.target.checked)}
+                disabled={!formData.email_enabled}
+                className="sr-only"
+              />
+              <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                autoPolling ? 'bg-yellow-600' : 'bg-gray-200'
+              } ${!formData.email_enabled ? 'opacity-50' : ''}`}>
+                <div className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  autoPolling ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </div>
+            </label>
           </div>
 
           {/* Action Buttons */}

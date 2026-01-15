@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  normalizeColorCode,
+  applyColorToStatus,
+  applyColorToRelevance
+} from '@/lib/colorMappings';
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -202,73 +207,59 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Map status to enum
-        const mappedStatus = statusRaw ? mapStatusToEnum(statusRaw) : null;
-
-        // Parse meeting date
+        // Parse meeting date first
         const meetingDate = parseDate(meetingDateRaw);
 
+        // Map status from text (this will be overridden by color if applicable)
+        let initialStatus = statusRaw ? mapStatusToEnum(statusRaw) : null;
+
         // Extract color information from status, extra fields, or dedicated color column
-        let colorCode = null;
-        const allFields = [statusRaw, ...rest].join(' ').toLowerCase();
+        let detectedColor = null;
+        const allFields = [statusRaw, ...rest].join(' ');
 
         // Check if there's a dedicated color column (usually in rest fields)
-        const colorColumn = rest.find(field =>
-          field && ['ירוק', 'אדום', 'צהוב', 'כחול', 'כתום', 'סגול', 'לבן', 'green', 'red', 'yellow', 'blue', 'orange', 'purple', 'white'].includes(field.toLowerCase().trim())
-        );
+        const colorColumn = rest.find(field => {
+          if (!field) return false;
+          const normalized = normalizeColorCode(field);
+          return normalized !== null;
+        });
 
         if (colorColumn) {
-          const normalizedColor = colorColumn.toLowerCase().trim();
-          // Map English color names to Hebrew
-          const colorMap: { [key: string]: string } = {
-            'green': 'ירוק', 'ירוק': 'ירוק', 'ירו': 'ירוק',
-            'red': 'אדום', 'אדום': 'אדום', 'אד': 'אדום',
-            'yellow': 'צהוב', 'צהוב': 'צהוב', 'צה': 'צהוב',
-            'blue': 'כחול', 'כחול': 'כחול', 'כח': 'כחול',
-            'orange': 'כתום', 'כתום': 'כתום',
-            'purple': 'סגול', 'סגול': 'סגול',
-            'white': 'לבן', 'לבן': 'לבן'
-          };
-          colorCode = colorMap[normalizedColor] || null;
+          detectedColor = normalizeColorCode(colorColumn);
         }
 
-        // If no dedicated color column, try to detect from Hebrew color words in text
-        if (!colorCode) {
-          if (allFields.includes('ירוק') || allFields.includes('ירו')) {
-            colorCode = 'ירוק';
-          } else if (allFields.includes('אדום') || allFields.includes('אד')) {
-            colorCode = 'אדום';
-          } else if (allFields.includes('צהוב') || allFields.includes('צה')) {
-            colorCode = 'צהוב';
-          } else if (allFields.includes('כחול') || allFields.includes('כח')) {
-            colorCode = 'כחול';
-          } else if (allFields.includes('כתום')) {
-            colorCode = 'כתום';
-          } else if (allFields.includes('סגול')) {
-            colorCode = 'סגול';
-          } else if (allFields.includes('לבן')) {
-            colorCode = 'לבן';
+        // If no dedicated color column, try to detect from all text fields
+        if (!detectedColor) {
+          // Try each field to find color mentions
+          for (const field of [statusRaw, ...rest]) {
+            if (field) {
+              const normalized = normalizeColorCode(field);
+              if (normalized) {
+                detectedColor = normalized;
+                break;
+              }
+            }
           }
         }
 
-        // Smart color inference based on status patterns (fallback)
-        if (!colorCode && statusRaw) {
-          const status = statusRaw.toLowerCase().trim();
-          if (status.includes('נסגר') || status.includes('נמכר') || status.includes('עסקה')) {
-            colorCode = 'ירוק'; // Green for closed deals
-          } else if (status.includes('תואם') || status.includes('במעקב') || agentName) {
-            colorCode = 'צהוב'; // Yellow for matched/in progress
-          } else if (status.includes('לא תואם') || status.includes('לא רצה') || status.includes('אין מענה')) {
-            colorCode = 'אדום'; // Red for rejected/no contact
-          }
+        // Store the normalized color code
+        const colorCode = detectedColor;
+
+        // Debug: Log color detection
+        if (colorCode) {
+          console.log(`Row ${i + 1}: Detected color "${colorCode}" for ${customerName}`);
         }
 
-        // Determine relevance status
-        let relevanceStatus = 'ממתין לבדיקה';
-        if (assignedAgentId) {
+        // Apply color mappings to determine final status and relevance
+        // Color takes precedence over text-based status detection
+        const finalStatus = applyColorToStatus(colorCode, initialStatus);
+
+        // Determine relevance status based on color and other factors
+        let relevanceStatus = applyColorToRelevance(colorCode);
+
+        // If no color-based relevance was set and agent is assigned, mark as relevant
+        if (relevanceStatus === 'ממתין לבדיקה' && assignedAgentId) {
           relevanceStatus = 'רלוונטי';
-        } else if (mappedStatus === 'לא תואם' && (statusRaw?.includes('לא רצה') || statusRaw?.includes('לא מעוניין'))) {
-          relevanceStatus = 'לא רלוונטי';
         }
 
         const lead = {
@@ -277,7 +268,7 @@ export async function POST(request: NextRequest) {
           email: null, // Not provided in CSV
           source: 'Other' as const,
           relevance_status: relevanceStatus,
-          status: mappedStatus,
+          status: finalStatus,
           assigned_agent_id: assignedAgentId,
           meeting_date: meetingDate,
           agent_notes: statusRaw ? statusRaw.trim() : null,

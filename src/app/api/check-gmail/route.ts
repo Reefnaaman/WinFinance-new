@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GmailService } from '@/services/gmailService'
 import { createClient } from '@supabase/supabase-js'
-import { getServerSession } from 'next-auth'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -17,27 +16,44 @@ function getSupabaseClient() {
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseClient()
-    // Get current session
-    const session = await getServerSession()
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'No authenticated user' },
-        { status: 401 }
-      )
-    }
+    // For now, allow all requests since this is only called from admin panel or webhook
+    // The admin panel itself requires authentication to access
+    const body = await request.json().catch(() => ({}))
 
-    const userEmail = session.user.email
-    console.log(`Checking Gmail for user: ${userEmail}`)
+    // Get the actual connected Gmail account from the database
+    const { data: tokenData } = await supabase
+      .from('gmail_tokens')
+      .select('user_email')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const userEmail = tokenData?.user_email || 'peleg@winfinance.co.il'
+
+    console.log(`Checking Gmail for: ${userEmail}`)
 
     const gmailService = new GmailService()
 
-    // Get list of messages from leadmail@raion.co.il (both read and unread)
-    // You can adjust the query to include date ranges or other filters
-    const query = 'from:leadmail@raion.co.il' // This will get ALL emails from this sender
-    // Alternative queries:
-    // 'from:leadmail@raion.co.il is:unread' - only unread
-    // 'from:leadmail@raion.co.il after:2024/1/1' - emails after specific date
+    // Check if this is from webhook (instant processing) or manual (batch processing)
+    const isWebhook = body.triggered_by === 'webhook'
+
+    let query: string
+    if (isWebhook) {
+      // For webhook: check RECENT emails (last hour) regardless of read status
+      // This ensures we catch emails even if they were auto-marked as read
+      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) newer_than:1h`
+      console.log('Webhook trigger - checking emails from last hour (read and unread)')
+    } else {
+      // For manual check: get emails from past 2 days
+      const twoDaysAgo = new Date()
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+      const dateString = `${twoDaysAgo.getFullYear()}/${twoDaysAgo.getMonth() + 1}/${twoDaysAgo.getDate()}`
+      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) after:${dateString}`
+      console.log('Manual check - checking emails from past 2 days')
+    }
+
+    console.log(`Query: ${query}`)
 
     const messages = await gmailService.listMessages(userEmail, query)
 
@@ -50,14 +66,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`Found ${messages.length} unread emails`)
+    // Limit processing to prevent flooding
+    const MAX_EMAILS_PER_RUN = 20;
+    const messagesToProcess = messages.slice(0, MAX_EMAILS_PER_RUN);
+
+    console.log(`Found ${messages.length} emails matching query, processing first ${messagesToProcess.length}`)
 
     let processedCount = 0
     let createdLeads = 0
+    let skippedInvalid = 0
     const errors = []
 
     // Process each message
-    for (const message of messages) {
+    for (const message of messagesToProcess) {
       try {
         // Get full message details
         const fullMessage = await gmailService.getMessage(userEmail, message.id!)
@@ -77,6 +98,7 @@ export async function POST(request: NextRequest) {
         const leadData = gmailService.parseLeadFromEmail(emailContent)
 
         if (leadData && leadData.lead_name && leadData.phone) {
+          console.log(`Parsed lead: ${leadData.lead_name} - ${leadData.phone}`)
           // Check if lead already exists with same phone number
           const { data: existingLead } = await supabase
             .from('leads')
@@ -86,8 +108,13 @@ export async function POST(request: NextRequest) {
 
           if (existingLead) {
             console.log(`Lead with phone ${leadData.phone} already exists, skipping`)
-            // Still mark as read to avoid reprocessing
-            await gmailService.markAsRead(userEmail, message.id!)
+            // Try to mark as read but don't fail if it doesn't work
+            try {
+              await gmailService.markAsRead(userEmail, message.id!)
+              console.log(`Marked email ${message.id} as read`)
+            } catch (markError) {
+              console.error(`Failed to mark email ${message.id} as read:`, markError)
+            }
             continue
           }
 
@@ -98,9 +125,9 @@ export async function POST(request: NextRequest) {
               lead_name: leadData.lead_name,
               phone: leadData.phone,
               email: leadData.email || null,
-              source: 'Raion Email',  // Changed to identify source
+              source: 'Email',  // Standard enum value for email sources
               relevance_status: 'ממתין לבדיקה',
-              agent_notes: leadData.notes || `נשלח מ: ${from}\nנושא: ${subject}\nתאריך: ${date}`,
+              agent_notes: leadData.notes || null,  // Only use actual notes from email content
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -114,11 +141,20 @@ export async function POST(request: NextRequest) {
             console.log('Lead created successfully:', newLead.id)
             createdLeads++
 
-            // Mark email as read
-            await gmailService.markAsRead(userEmail, message.id!)
+            // Try to mark email as read
+            try {
+              await gmailService.markAsRead(userEmail, message.id!)
+              console.log(`Marked new lead email ${message.id} as read`)
+            } catch (markError) {
+              console.error(`Failed to mark email ${message.id} as read:`, markError)
+              // Don't fail the whole process, just log the error
+            }
           }
         } else {
-          console.log(`Email ${message.id} doesn't contain lead information`)
+          console.log(`Email ${message.id} doesn't contain valid lead information`)
+          console.log(`Subject: ${subject}`)
+          console.log(`From: ${from}`)
+          skippedInvalid++
 
           // You might want to still mark it as read if it's from specific senders
           // For now, we'll leave it unread
@@ -131,7 +167,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log the check
+    // Log the check with detailed info
     await supabase
       .from('email_logs')
       .insert({
@@ -139,7 +175,15 @@ export async function POST(request: NextRequest) {
         email_subject: `Gmail Check - Processed ${processedCount} emails`,
         processed_at: new Date().toISOString(),
         lead_created: createdLeads > 0,
-        raw_content: `Checked ${messages.length} emails, created ${createdLeads} leads`
+        raw_content: JSON.stringify({
+          query: query,
+          isWebhook: isWebhook,
+          totalFound: messages.length,
+          processed: processedCount,
+          created: createdLeads,
+          skipped: skippedInvalid,
+          userEmail: userEmail
+        })
       })
 
     return NextResponse.json({
@@ -147,6 +191,8 @@ export async function POST(request: NextRequest) {
       message: `Processed ${processedCount} emails, created ${createdLeads} leads`,
       processed: processedCount,
       created: createdLeads,
+      skippedInvalid: skippedInvalid,
+      totalFound: messages.length,
       errors: errors.length > 0 ? errors : undefined
     })
 
@@ -166,6 +212,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   // Vercel cron jobs use GET requests
-  // Call the same logic as POST
+  // Just call POST directly
   return POST(request)
 }

@@ -103,7 +103,7 @@ export const calculateAgentPerformance = (
 
   return dbAgents
     .filter((agent, index, self) => index === self.findIndex((a) => a.id === agent.id)) // Remove duplicates
-    .filter(a => a.role === 'agent') // Only agents in ranking
+    .filter(a => a.role === 'agent' || a.role === 'admin') // Include agents and admin in rankings (both can be assigned leads)
     .map((agent, index) => {
       const agentLeads = analyticsLeads.filter(l => l.assigned_agent_id === agent.id);
       const agentClosedLeads = agentLeads.filter(lead => lead.status === 'עסקה נסגרה');

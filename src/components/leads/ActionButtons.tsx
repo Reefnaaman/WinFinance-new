@@ -82,11 +82,11 @@ export default function ActionButtons({
       {/* Action Buttons */}
       <div className={`flex items-center gap-2 ${className}`}>
 
-        {/* CSV Export Button - Hidden for agents */}
-        {!hideExport && <CSVExport />}
+        {/* CSV Export Button - HIDDEN BY REQUEST */}
+        {/* {!hideExport && <CSVExport />} */}
 
-        {/* CSV Import Button - Only if user can create leads - Desktop only */}
-        {canCreateLeads() && (
+        {/* CSV Import Button - HIDDEN BY REQUEST */}
+        {/* {canCreateLeads() && (
           <button
             onClick={() => setShowCSVImport(true)}
             className={`
@@ -101,16 +101,16 @@ export default function ActionButtons({
             </svg>
             <span>ייבוא</span>
           </button>
-        )}
+        )} */}
 
         {/* Lead Entry Button - Only if user can create leads */}
         {canCreateLeads() && (
           <button
             onClick={() => setShowLeadEntryForm(true)}
             className={`
-              ${compact ? 'px-2' : 'px-3'} h-10 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 hover:border-blue-300
-              transition-all duration-200 flex items-center gap-1 text-xs md:text-sm font-medium
-              rounded-lg hover:shadow-sm whitespace-nowrap
+              w-full ${compact ? 'px-2' : 'px-3'} h-10 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 hover:border-blue-300
+              transition-all duration-200 flex items-center justify-center gap-1 text-xs md:text-sm font-medium
+              rounded-lg hover:shadow-sm
             `}
             title="הוספת ליד חדש"
           >

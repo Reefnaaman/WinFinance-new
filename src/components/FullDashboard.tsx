@@ -9,8 +9,9 @@ import LeadsPage from './leads/LeadsPage';
 import SettingsPage from './settings/SettingsPage';
 import HomePage from './dashboard/HomePage';
 import SupplierDashboard from './supplier/SupplierDashboard';
-import { getDateRange } from './shared/leadUtils';
+import { getDateRange, getDateRangeWithEnd } from './shared/leadUtils';
 import { calculateAnalytics } from './dashboard/analyticsUtils';
+import { DateRange } from './dashboard/DateRangePicker';
 import Image from 'next/image';
 
 export default function FullDashboard() {
@@ -19,14 +20,21 @@ export default function FullDashboard() {
   const [activeAgent, setActiveAgent] = useState('all');
   const [activeStatus, setActiveStatus] = useState('all');
   const [activeSource, setActiveSource] = useState('all');
+  const [activeRelevance, setActiveRelevance] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('month');
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+    endDate: new Date()
+  });
 
   // Database data
   const [dbLeads, setDbLeads] = useState<Lead[]>([]);
   const [dbAgents, setDbAgents] = useState<Agent[]>([]);
+  // Start loading as true to prevent flash of empty content
   const [loading, setLoading] = useState(true);
+  const [dataInitialized, setDataInitialized] = useState(false);
 
   // Mobile navigation state
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -40,7 +48,7 @@ export default function FullDashboard() {
   const [pullDistance, setPullDistance] = useState(0);
 
   // Sorting state
-  const [sortBy, setSortBy] = useState<'status' | 'date' | 'name' | 'agent'>('date');
+  const [sortBy, setSortBy] = useState<'status' | 'date' | 'name' | 'agent' | 'relevance' | 'source'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Handle pull to refresh
@@ -61,7 +69,10 @@ export default function FullDashboard() {
   // Fetch data from Supabase
   const fetchData = async () => {
     try {
-      setLoading(true);
+      // Don't reset loading state if data is already initialized
+      if (!dataInitialized) {
+        setLoading(true);
+      }
 
       const { data: agentsData } = await supabase
         .from('agents')
@@ -75,6 +86,7 @@ export default function FullDashboard() {
 
       setDbAgents(agentsData || []);
       setDbLeads(leadsData || []);
+      setDataInitialized(true);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -83,22 +95,34 @@ export default function FullDashboard() {
   };
 
   // useEffect MUST be before any conditional returns
+  // Only fetch data once auth is complete and user is available
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user && !authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
 
-  // Force agents and lead suppliers to their respective pages
-  // Also set default sorting for agents
+  // Set default page and sorting based on role
+  // Only set initial page on first mount, not on every user update
   useEffect(() => {
-    if (user?.role === 'agent') {
-      setCurrentPage('leads');
-      // Automatically sort by date for agents (most recent first)
+    if (!user) return;
+
+    // Only set initial page once when user is first loaded
+    // This prevents unwanted redirects after authentication
+    if (user.role === 'agent') {
+      // Set default sorting for agents (most recent first)
       setSortBy('date');
       setSortOrder('desc');
-    } else if (user?.role === 'lead_supplier') {
-      setCurrentPage('supplier-dashboard');
+      // Don't force navigate to leads page - let user stay on their current page
+    } else if (user.role === 'lead_supplier') {
+      // Lead suppliers should start on their dashboard
+      // Only set if current page is still 'home' (initial state)
+      if (currentPage === 'home') {
+        setCurrentPage('supplier-dashboard');
+      }
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only run when user ID changes (login/logout), not on every user object update
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -120,7 +144,8 @@ export default function FullDashboard() {
   // Dynamic sources - includes lead providers
   const leadProviders = dbAgents.filter(agent => agent.role === 'lead_supplier');
   const sources = [
-    { id: 'Email', label: 'Email', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'Email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'Excel Import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
     ...leadProviders.map((provider, index) => ({
       id: provider.name,
       label: provider.name,
@@ -158,16 +183,18 @@ export default function FullDashboard() {
   const filterCounts = {
     agents: {} as Record<string, number>,
     statuses: {} as Record<string, number>,
-    sources: {} as Record<string, number>
+    sources: {} as Record<string, number>,
+    relevance: {} as Record<string, number>
   };
 
   // Initialize counts
   filterCounts.agents['all'] = dbLeads.length;
   filterCounts.statuses['all'] = dbLeads.length;
   filterCounts.sources['all'] = dbLeads.length;
+  filterCounts.relevance['all'] = dbLeads.length;
 
-  // Count leads per agent (only for agents)
-  const agentsList = dbAgents.filter(agent => agent.role === 'agent');
+  // Count leads per agent (agents and admin can have leads)
+  const agentsList = dbAgents.filter(agent => agent.role === 'agent' || agent.role === 'admin');
   agentsList.forEach(agent => {
     filterCounts.agents[agent.id] = dbLeads.filter(lead => lead.assigned_agent_id === agent.id).length;
   });
@@ -182,18 +209,16 @@ export default function FullDashboard() {
     filterCounts.sources[source.id] = dbLeads.filter(lead => lead.source === source.id).length;
   });
 
+  // Count leads per relevance status
+  relevanceStatuses.forEach(relevance => {
+    filterCounts.relevance[relevance.id] = dbLeads.filter(lead => lead.relevance_status === relevance.id).length;
+  });
+
   const filteredLeads = dbLeads.filter(lead => {
     // Role-based filtering: agents only see their assigned leads
     if (user?.role === 'agent') {
       const matches = lead.assigned_agent_id === user.id;
-      if (!matches && lead.assigned_agent_id) {
-        console.log('Agent filter mismatch:', {
-          leadAgentId: lead.assigned_agent_id,
-          userId: user.id,
-          userName: user.name,
-          leadName: lead.lead_name
-        });
-      }
+      // Remove debug logging that's flooding console
       return matches;
     }
 
@@ -203,11 +228,24 @@ export default function FullDashboard() {
     }
 
     // Time-based filtering based on lead creation date
-    const filterDate = getDateRange(timeRange);
-    if (filterDate) {
-      const leadCreatedDate = new Date(lead.created_at);
-      if (leadCreatedDate < filterDate) {
+    const leadCreatedDate = new Date(lead.created_at);
+    if (timeRange === 'custom' && customDateRange) {
+      // Custom date range filtering
+      const startOfDay = new Date(customDateRange.startDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(customDateRange.endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      if (leadCreatedDate < startOfDay || leadCreatedDate > endOfDay) {
         return false;
+      }
+    } else {
+      // Preset date range filtering
+      const filterDate = getDateRange(timeRange);
+      if (filterDate) {
+        if (leadCreatedDate < filterDate) {
+          return false;
+        }
       }
     }
 
@@ -220,12 +258,15 @@ export default function FullDashboard() {
     // Source filtering
     const matchesSource = activeSource === 'all' || lead.source === activeSource;
 
+    // Relevance filtering
+    const matchesRelevance = activeRelevance === 'all' || lead.relevance_status === activeRelevance;
+
     // Search filtering
     const matchesSearch = searchTerm === '' ||
                           lead.lead_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           lead.phone.includes(searchTerm);
 
-    return matchesAgent && matchesStatus && matchesSource && matchesSearch;
+    return matchesAgent && matchesStatus && matchesSource && matchesRelevance && matchesSearch;
   });
 
   // Sort filtered leads
@@ -279,6 +320,26 @@ export default function FullDashboard() {
         const bAgent = dbAgents.find(agent => agent.id === b.assigned_agent_id)?.name || 'zzz';
         comparison = aAgent.localeCompare(bAgent, 'he');
         break;
+
+      case 'relevance':
+        // Define relevance priority (pending first, then relevant)
+        const relevancePriority: Record<string, number> = {
+          'ממתין לבדיקה': 1,
+          'רלוונטי': 2,
+          'במעקב': 3,
+          'לא רלוונטי': 4
+        };
+        const aRelevancePriority = relevancePriority[a.relevance_status || ''] || 999;
+        const bRelevancePriority = relevancePriority[b.relevance_status || ''] || 999;
+        comparison = aRelevancePriority - bRelevancePriority;
+        break;
+
+      case 'source':
+        // Sort sources alphabetically
+        const aSource = a.source || 'zzz';
+        const bSource = b.source || 'zzz';
+        comparison = aSource.localeCompare(bSource, 'he');
+        break;
     }
 
     return sortOrder === 'asc' ? comparison : -comparison;
@@ -300,7 +361,7 @@ export default function FullDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white" dir="rtl">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-[100]">
         <div className="max-w-none mx-auto px-2 sm:px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Left: Logo and Hamburger Menu */}
@@ -363,7 +424,15 @@ export default function FullDashboard() {
               </div>
               <p className="text-sm font-medium text-slate-700">{user.name}</p>
               <button
-                onClick={logout}
+                onClick={async () => {
+                  try {
+                    await logout();
+                    // Force a page reload to ensure clean state
+                    window.location.href = '/';
+                  } catch (error) {
+                    console.error('Logout failed:', error);
+                  }
+                }}
                 className="ml-2 px-3 py-1.5 text-sm text-slate-800 bg-red-500/30 hover:text-slate-900 hover:bg-red-500/40 rounded-lg transition-colors"
               >
                 יציאה
@@ -404,11 +473,12 @@ export default function FullDashboard() {
       <main className="max-w-none mx-auto px-2 sm:px-4 py-6 md:py-8">
         {currentPage === 'home' && (
           <HomePage
-            dbLeads={dbLeads}
+            dbLeads={filteredLeads}
             dbAgents={dbAgents}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
             currentUser={user}
+            loading={loading}
           />
         )}
         {currentPage === 'leads' && (
@@ -426,6 +496,8 @@ export default function FullDashboard() {
             setActiveStatus={setActiveStatus}
             activeSource={activeSource}
             setActiveSource={setActiveSource}
+            activeRelevance={activeRelevance}
+            setActiveRelevance={setActiveRelevance}
             filterCounts={filterCounts}
             fetchData={fetchData}
             canCreateLeads={canCreateLeads}
@@ -441,6 +513,10 @@ export default function FullDashboard() {
             pullDistance={pullDistance}
             handleRefresh={handleRefresh}
             setPullDistance={setPullDistance}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+            customDateRange={customDateRange}
+            setCustomDateRange={setCustomDateRange}
           />
         )}
         {currentPage === 'settings' && (

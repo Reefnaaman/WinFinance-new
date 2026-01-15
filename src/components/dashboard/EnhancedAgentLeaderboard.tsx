@@ -35,7 +35,7 @@ export default function EnhancedAgentLeaderboard({
   const agentData = calculateAgentPerformance(analyticsLeads, dbAgents);
 
   // Calculate revenue for each agent manually
-  const agentsWithRevenue = agentData.map((agent, index) => {
+  const agentsWithRevenue = agentData.map((agent) => {
     const agentLeads = analyticsLeads.filter(l => l.assigned_agent_id === agent.id);
     const closedDeals = agentLeads.filter(l => l.status === 'עסקה נסגרה');
     const totalRevenue = closedDeals
@@ -50,9 +50,19 @@ export default function EnhancedAgentLeaderboard({
       totalRevenue,
       closedDeals: closedDeals.length,
       conversionRate,
-      rank: index + 1
+      totalLeads: agentLeads.length
     };
-  }).sort((a, b) => b.totalRevenue - a.totalRevenue);
+  })
+  .filter(agent => agent.totalLeads > 0) // Only show agents with assigned leads
+  .sort((a, b) => {
+    // Primary: Revenue (descending)
+    if (b.totalRevenue !== a.totalRevenue) {
+      return b.totalRevenue - a.totalRevenue;
+    }
+    // Secondary: Conversion Rate (descending)
+    return b.conversionRate - a.conversionRate;
+  })
+  .map((agent, index) => ({ ...agent, rank: index + 1 })); // Assign rank AFTER sorting
 
   // Get top 5 agents only
   const topAgents = agentsWithRevenue.slice(0, 5);
