@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data && !error) {
         console.log('Agent found:', data.name)
-        setUser(data)
+        setUser(data as Agent)
       } else {
         console.error('No agent found for email:', email, 'Error:', error?.message)
         setUser(null)
