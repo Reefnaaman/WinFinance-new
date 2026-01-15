@@ -1,43 +1,41 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from './database.types'
 
-let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export function getSupabase() {
-  if (supabaseInstance) return supabaseInstance
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing required Supabase environment variables')
-  }
-
-  supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-    db: {
-      schema: 'public'
-    },
-    global: {
-      headers: {
-        'x-application-name': 'lead-management'
-      }
-    }
-  })
-
-  return supabaseInstance
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing required Supabase environment variables')
 }
 
-// For backward compatibility
-export const supabase = new Proxy({} as ReturnType<typeof createClient<Database>>, {
-  get(target, prop) {
-    const client = getSupabase()
-    return (client as any)[prop]
+// Create a single, stable client instance
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'x-application-name': 'lead-management'
+    }
+  },
+  // Add realtime and fetch options to prevent AbortError
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 })
+
+// For compatibility with code that uses getSupabase()
+export function getSupabase() {
+  return supabase
+}
 
 // Admin client for server-side operations
 export const createServerClient = () => {

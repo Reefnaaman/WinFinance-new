@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { Agent } from '@/lib/database.types'
 
 interface AuthContextType {
@@ -30,7 +30,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = getSupabase()
 
   useEffect(() => {
     // Check for existing session on mount
@@ -38,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUser()
 
     // Listen for auth changes
-    const { data: { subscription } } = getSupabase().auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email)
       if (event === 'SIGNED_IN' && session?.user?.email) {
         await fetchUserData(session.user.email) // fetchUserData now handles setLoading
@@ -54,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkUser = async () => {
     try {
       console.log('Fetching session...')
-      const { data: { session }, error } = await getSupabase().auth.getSession()
+      const { data: { session }, error } = await supabase.auth.getSession()
       console.log('Session result:', session, 'Error:', error)
 
       if (session?.user?.email) {
@@ -78,45 +77,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Fetching user data for email:', email)
 
-      // Add a small delay to ensure auth is fully initialized
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Create a fresh client instance for the query
-      const client = getSupabase()
-
-      // Try with both exact and case-insensitive match
-      let { data, error } = await client
+      // Simple, direct query with lowercase email
+      const { data, error } = await supabase
         .from('agents')
         .select('*')
         .eq('email', email.toLowerCase())
-        .maybeSingle()
+        .single()
 
-      // If lowercase didn't work, try with original case
-      if (!data && !error) {
-        const result = await client
-          .from('agents')
-          .select('*')
-          .ilike('email', email)
-          .maybeSingle()
-        data = result.data
-        error = result.error
-      }
-
-      if (data) {
+      if (error) {
+        console.error('Database error:', error.message)
+        setUser(null)
+      } else if (data) {
         console.log('Agent found:', (data as Agent).name)
         setUser(data as Agent)
       } else {
-        console.error('No agent found for email:', email, 'Error:', error?.message || 'No matching agent')
-        // Log more details for debugging
-        if (error) {
-          console.error('Error details:', error)
-        }
+        console.error('No agent found for email:', email)
         setUser(null)
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error)
-      // Log full error for debugging
-      console.error('Full error object:', JSON.stringify(error, null, 2))
       setUser(null)
     } finally {
       setLoading(false)
@@ -125,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await getSupabase().auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -146,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await getSupabase().auth.signOut()
+      await supabase.auth.signOut()
       setUser(null)
     } catch (error) {
       console.error('Error signing out:', error)
