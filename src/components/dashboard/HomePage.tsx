@@ -195,10 +195,10 @@ export default function HomePage({
             filteredLeads={dbLeads.filter(lead => lead.assigned_agent_id === currentUser.id)}
             dbAgents={dbAgents}
             sources={[
-              { id: 'Email', label: 'אימייל', color: 'bg-blue-500' },
-              { id: 'Google Sheet', label: 'גוגל שיטס', color: 'bg-green-500' },
-              { id: 'Manual', label: 'ידני', color: 'bg-purple-500' },
-              { id: 'Other', label: 'אחר', color: 'bg-gray-500' }
+              { id: 'Email', label: 'אימייל', color: 'bg-blue-500', icon: '📧', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+              { id: 'Google Sheet', label: 'גוגל שיטס', color: 'bg-green-500', icon: '📊', lightBg: 'bg-green-50', text: 'text-green-700' },
+              { id: 'Manual', label: 'ידני', color: 'bg-purple-500', icon: '✍️', lightBg: 'bg-purple-50', text: 'text-purple-700' },
+              { id: 'Other', label: 'אחר', color: 'bg-gray-500', icon: '📌', lightBg: 'bg-gray-50', text: 'text-gray-700' }
             ]}
             statuses={[
               { id: 'ליד חדש', label: 'ליד חדש', color: 'bg-indigo-500', lightBg: 'bg-indigo-50', text: 'text-indigo-700' },
