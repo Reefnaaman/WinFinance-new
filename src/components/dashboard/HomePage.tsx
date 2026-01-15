@@ -229,16 +229,21 @@ export default function HomePage({
             sortOrder="desc"
             setSortOrder={() => {}}
             fetchData={async () => {}}
-            canCreateLeads={false}
-            canAssignLeads={false}
-            canViewAllLeads={false}
-            canDeleteLeads={false}
+            canCreateLeads={() => false}
             filterCounts={{
-              agent: {},
-              status: {},
-              source: {},
+              agents: {},
+              statuses: {},
+              sources: {},
               relevance: {}
             }}
+            swipedCard={null}
+            setSwipedCard={() => {}}
+            swipeStart={null}
+            setSwipeStart={() => {}}
+            isRefreshing={false}
+            pullDistance={0}
+            handleRefresh={async () => {}}
+            setPullDistance={() => {}}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
             customDateRange={customDateRange}
