@@ -9,6 +9,7 @@ import { DateRange } from './DateRangePicker';
 import EnhancedAgentLeaderboard from './EnhancedAgentLeaderboard';
 import SourceEffectivenessChart from './SourceEffectivenessChart';
 import ModernCompactStatusChart from './ModernCompactStatusChart';
+import LeadsPage from '../leads/LeadsPage';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -187,70 +188,62 @@ export default function HomePage({
         )}
       </div>
 
-      {/* Agent Leads Section - Show leads directly on homepage for agents */}
+      {/* Agent Leads Section - Full editable table for agents */}
       {currentUser?.role === 'agent' && (
         <div className="animate-fade-in-up animation-delay-500">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <span>📋</span>
-                הלידים שלי ({dbLeads.length})
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                כל הלידים שהוקצו לך ודורשים טיפול
-              </p>
-            </div>
-
-            <div className="p-4 md:p-6">
-              {dbLeads.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-4">🎯</div>
-                  <p className="text-lg font-medium mb-2">אין לידים כרגע</p>
-                  <p className="text-sm">לידים חדשים יופיעו כאן כשהם יוקצו לך</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {dbLeads.slice(0, 10).map((lead) => (
-                    <div
-                      key={lead.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="font-medium text-gray-900">{lead.lead_name}</h4>
-                          <span className="text-sm text-gray-500">{lead.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-600">
-                          <span>📅 {new Date(lead.created_at).toLocaleDateString('he-IL')}</span>
-                          {lead.meeting_date && (
-                            <span>🕒 פגישה: {new Date(lead.meeting_date).toLocaleDateString('he-IL')}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          lead.status === 'עסקה נסגרה' ? 'bg-green-100 text-green-700' :
-                          lead.status === 'תואם' ? 'bg-blue-100 text-blue-700' :
-                          lead.status === 'במעקב' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {lead.status || 'ליד חדש'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {dbLeads.length > 10 && (
-                    <div className="text-center pt-4 border-t border-gray-100">
-                      <p className="text-sm text-gray-500">
-                        מוצגים 10 מתוך {dbLeads.length} לידים
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <LeadsPage
+            filteredLeads={dbLeads.filter(lead => lead.assigned_agent_id === currentUser.id)}
+            dbAgents={dbAgents}
+            sources={[
+              { id: 'Email', label: 'אימייל', color: 'bg-blue-500' },
+              { id: 'Google Sheet', label: 'גוגל שיטס', color: 'bg-green-500' },
+              { id: 'Manual', label: 'ידני', color: 'bg-purple-500' },
+              { id: 'Other', label: 'אחר', color: 'bg-gray-500' }
+            ]}
+            statuses={[
+              { id: 'ליד חדש', label: 'ליד חדש', color: 'bg-indigo-500', lightBg: 'bg-indigo-50', text: 'text-indigo-700' },
+              { id: 'אין מענה - לתאם מחדש', label: 'אין מענה', color: 'bg-yellow-500', lightBg: 'bg-yellow-50', text: 'text-yellow-700' },
+              { id: 'תואם', label: 'תואם', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+              { id: 'במעקב', label: 'במעקב', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
+              { id: 'עסקה נסגרה', label: 'עסקה נסגרה', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
+              { id: 'התקיימה - כשלון', label: 'התקיימה - כשלון', color: 'bg-red-500', lightBg: 'bg-red-50', text: 'text-red-700' },
+              { id: 'לא רלוונטי', label: 'לא רלוונטי', color: 'bg-gray-500', lightBg: 'bg-gray-50', text: 'text-gray-700' }
+            ]}
+            relevanceStatuses={[
+              { id: 'ממתין לבדיקה', label: 'ממתין לבדיקה', color: 'bg-yellow-500', lightBg: 'bg-yellow-50', text: 'text-yellow-700' },
+              { id: 'רלוונטי', label: 'רלוונטי', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
+              { id: 'לא רלוונטי', label: 'לא רלוונטי', color: 'bg-gray-500', lightBg: 'bg-gray-50', text: 'text-gray-700' }
+            ]}
+            activeAgent="all"
+            setActiveAgent={() => {}}
+            activeStatus="all"
+            setActiveStatus={() => {}}
+            activeSource="all"
+            setActiveSource={() => {}}
+            activeRelevance="all"
+            setActiveRelevance={() => {}}
+            searchTerm=""
+            setSearchTerm={() => {}}
+            sortBy="date"
+            setSortBy={() => {}}
+            sortOrder="desc"
+            setSortOrder={() => {}}
+            fetchData={async () => {}}
+            canCreateLeads={false}
+            canAssignLeads={false}
+            canViewAllLeads={false}
+            canDeleteLeads={false}
+            filterCounts={{
+              agent: {},
+              status: {},
+              source: {},
+              relevance: {}
+            }}
+            timeRange={timeRange}
+            setTimeRange={setTimeRange}
+            customDateRange={customDateRange}
+            setCustomDateRange={setCustomDateRange}
+          />
         </div>
       )}
     </div>

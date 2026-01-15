@@ -110,11 +110,10 @@ export default function FullDashboard() {
     // Only set initial page once when user is first loaded
     // This prevents unwanted redirects after authentication
     if (user.role === 'agent') {
-      // Agents should go directly to the leads page where they can edit
-      setCurrentPage('leads');
       // Set default sorting for agents (most recent first)
       setSortBy('date');
       setSortOrder('desc');
+      // Agents stay on home page with their unified dashboard
     } else if (user.role === 'lead_supplier') {
       // Lead suppliers should start on their dashboard
       // Only set if current page is still 'home' (initial state)
