@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const queryPromise = supabase
             .from('agents')
             .select('*')
-            .eq('email', email)
+            .ilike('email', email)
             .single()
 
           const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
