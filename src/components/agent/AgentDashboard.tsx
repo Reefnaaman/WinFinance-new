@@ -14,7 +14,7 @@ import {
   ChevronUp,
   Banknote
 } from 'lucide-react';
-import ModernSelector from '../ModernSelector';
+import ModernSelector from '../leads/ModernSelector';
 import InlineDateTimePicker from '../InlineDateTimePicker';
 import { formatPhoneNumber, updateLeadField } from '../shared/leadUtils';
 
