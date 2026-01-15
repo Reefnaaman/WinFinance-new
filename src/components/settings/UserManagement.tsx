@@ -27,25 +27,32 @@ export default function UserManagement({ dbAgents, fetchData }: UserManagementPr
   // Create user function
   const createUser = async () => {
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .insert([{
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: newUser.name,
           email: newUser.email,
-          role: newUser.role as any
-        }] as any)
-        .select()
-        .single();
+          role: newUser.role
+        })
+      });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      setUsers(prev => [...prev, data]);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create user');
+      }
+
+      setUsers(prev => [...prev, result.user]);
       setNewUser({ name: '', email: '', role: 'agent' });
       setShowCreateModal(false);
       fetchData(); // Refresh data
+      alert('משתמש נוצר בהצלחה! סיסמה זמנית נשלחה לאימייל.');
     } catch (error) {
       console.error('Error creating user:', error);
-      alert('שגיאה ביצירת משתמש');
+      alert('שגיאה ביצירת משתמש: ' + error);
     }
   };
 
