@@ -76,88 +76,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserData = async (email: string) => {
     try {
       console.log('Fetching user data for email:', email)
-      console.log('Attempting database query...')
 
-      // Add timeout promise to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
-      })
+      // Simple direct query with case-insensitive matching
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*')
+        .ilike('email', email)
+        .single()
 
-      // Fetch from the database with proper retry logic
-      let retries = 3
-      let lastError = null
-
-      while (retries > 0) {
-        try {
-          console.log(`Query attempt ${4 - retries}/3`)
-
-          const queryPromise = supabase
-            .from('agents')
-            .select('*')
-            .ilike('email', email)
-            .single()
-
-          const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
-
-          if (data && !error) {
-            console.log('Agent query successful:', { data, email })
-            console.log('Setting user:', data)
-            setUser(data)
-            setLoading(false)
-            return
-          }
-
-          if (error) {
-            lastError = error
-            console.log(`Query attempt failed (${4 - retries}/3):`, error.message)
-            retries--
-
-            if (retries > 0) {
-              // Wait before retry with exponential backoff
-              await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
-            }
-          }
-        } catch (err: any) {
-          lastError = err
-          console.log(`Query attempt error (${4 - retries}/3):`, err.message)
-          retries--
-          if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
-          }
-        }
-      }
-
-      // All retries failed
-      if (lastError) {
-        console.error('Error fetching user data after retries:', lastError)
-
-        // Try with case-insensitive search as last resort
-        try {
-          const { data: ciData, error: ciError } = await supabase
-            .from('agents')
-            .select('*')
-            .ilike('email', email)
-            .single()
-
-          if (ciData && !ciError) {
-            console.log('Setting user (case-insensitive match):', ciData)
-            setUser(ciData)
-            setLoading(false)
-            return
-          }
-        } catch (e) {
-          console.error('Case-insensitive search also failed:', e)
-        }
-
-        // No agent found - user needs to be added to the system
-        console.error('No agent found for email:', email)
+      if (data && !error) {
+        console.log('Agent found:', data.name)
+        setUser(data)
+      } else {
+        console.error('No agent found for email:', email, 'Error:', error?.message)
         setUser(null)
-        setLoading(false)
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error)
-      // Don't create a fallback user - let the user know there's an issue
       setUser(null)
+    } finally {
       setLoading(false)
     }
   }
