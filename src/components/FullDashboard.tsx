@@ -23,7 +23,7 @@ export default function FullDashboard() {
   const [activeRelevance, setActiveRelevance] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState('month');
+  const [timeRange, setTimeRange] = useState('current_month');
   const [customDateRange, setCustomDateRange] = useState<DateRange>({
     startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
     endDate: new Date()

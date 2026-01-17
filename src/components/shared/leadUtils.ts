@@ -186,6 +186,13 @@ export const getDateRange = (range: string, customStartDate?: Date, customEndDat
       const weekAgo = new Date(startOfToday);
       weekAgo.setDate(weekAgo.getDate() - 7);
       return weekAgo;
+    case 'current_week':
+      // From Sunday of current week (Israeli week starts on Sunday)
+      const dayOfWeek = now.getDay();
+      const daysToSunday = dayOfWeek === 0 ? 0 : dayOfWeek;
+      const sunday = new Date(startOfToday);
+      sunday.setDate(sunday.getDate() - daysToSunday);
+      return sunday;
     case 'month':
       const monthAgo = new Date(startOfToday);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -232,6 +239,15 @@ export const getDateRangeWithEnd = (range: string, customStartDate?: Date, custo
   if (!startDate) return null;
 
   switch (range) {
+    case 'current_week':
+      // Current week - from Sunday to Saturday (end of week)
+      const dayOfWeek = now.getDay();
+      const daysToSaturday = dayOfWeek === 6 ? 0 : 6 - dayOfWeek;
+      const saturday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSaturday, 23, 59, 59, 999);
+      return {
+        startDate,
+        endDate: saturday < endOfToday ? saturday : endOfToday
+      };
     case 'previous_month':
       // Full previous month - end on last day of that month
       const lastDayOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
