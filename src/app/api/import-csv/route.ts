@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
           lead_name: customerName.trim(),
           phone: formattedPhone,
           email: null, // Not provided in CSV
-          source: 'Other' as const,
+          source: 'excel_import' as const,
           relevance_status: relevanceStatus,
           status: finalStatus,
           assigned_agent_id: assignedAgentId,

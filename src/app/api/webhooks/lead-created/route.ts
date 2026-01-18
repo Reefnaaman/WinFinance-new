@@ -128,7 +128,7 @@ function parseEmailForWebhook(emailContent: string, sourceName?: string) {
   const result: any = {
     lead_name: '',
     phone: '',
-    source: sourceName || 'Email'
+    source: sourceName || 'email'
   }
 
   // Extract שם מלא (Full name)

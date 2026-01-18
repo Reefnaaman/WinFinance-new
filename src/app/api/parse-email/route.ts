@@ -50,7 +50,7 @@ function parseEmailContent(emailContent: string, sourceName?: string): ParsedLea
   const result: ParsedLead = {
     lead_name: '',
     phone: '',
-    source: sourceName || 'Email'
+    source: sourceName || 'email'
   }
 
   // Clean up the email content - remove extra spaces and normalize line breaks

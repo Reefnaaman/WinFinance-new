@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
                     lead_name: leadInfo.lead_name,
                     phone: leadInfo.phone,
                     email: leadInfo.email || '',
-                    source: 'Email',
+                    source: 'email',
                     relevance_status: 'ממתין לבדיקה',
                     created_at: new Date().toISOString()
                   })

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         lead_name: parsedLead.lead_name,
         phone: parsedLead.phone,
         email: null, // Can be extracted if found in email
-        source: 'Email', // Use fixed enum value
+        source: 'email', // Use fixed enum value
         relevance_status: 'ממתין לבדיקה', // Pending review
         agent_notes: buildNotesFromParsedData(parsedLead, sourceName),
         created_at: new Date().toISOString(),
@@ -119,7 +119,7 @@ function parseEmailContent(emailContent: string, sourceName?: string): ParsedLea
   const result: ParsedLead = {
     lead_name: '',
     phone: '',
-    source: sourceName || 'Email'
+    source: sourceName || 'email'
   }
 
   // Clean up the email content - remove extra spaces and normalize line breaks
