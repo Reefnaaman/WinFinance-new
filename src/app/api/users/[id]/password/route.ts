@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { password } = await request.json();
 
     if (!password) {
@@ -19,7 +20,7 @@ export async function PATCH(
 
     // Update the user's password
     const { error } = await adminSupabase.auth.admin.updateUserById(
-      params.id,
+      id,
       { password }
     );
 
