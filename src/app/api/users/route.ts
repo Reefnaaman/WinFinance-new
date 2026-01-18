@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
     // Then create the agent record with the same ID
     const { data: agent, error: agentError } = await adminSupabase
       .from('agents')
-      .insert([{
+      .insert({
         id: authUser.user.id,
         name,
         email,
         role
-      }])
+      } as any)
       .select()
       .single();
 
