@@ -1,5 +1,6 @@
 import { Lead, Agent } from '@/lib/database.types';
-import { getDateRange } from '../shared/leadUtils';
+import { getDateRange, getDateRangeWithEnd } from '../shared/leadUtils';
+import { DateRange } from './DateRangePicker';
 
 export interface AnalyticsData {
   totalLeads: number;
@@ -49,13 +50,30 @@ export const calculateAnalytics = (
   dbLeads: Lead[],
   dbAgents: Agent[],
   timeRange: string,
-  leadProviders: Agent[]
+  leadProviders: Agent[],
+  customDateRange?: DateRange
 ): AnalyticsData => {
   // Filter leads for analytics based on time range
-  const analyticsFilterDate = getDateRange(timeRange);
-  const analyticsLeads = analyticsFilterDate
-    ? dbLeads.filter(lead => new Date(lead.created_at) >= analyticsFilterDate)
-    : dbLeads;
+  let analyticsLeads: Lead[];
+
+  if (timeRange === 'custom' && customDateRange) {
+    // Handle custom date range filtering
+    const startOfCustomStart = new Date(customDateRange.startDate);
+    startOfCustomStart.setHours(0, 0, 0, 0);
+    const endOfCustomEnd = new Date(customDateRange.endDate);
+    endOfCustomEnd.setHours(23, 59, 59, 999);
+
+    analyticsLeads = dbLeads.filter(lead => {
+      const leadDate = new Date(lead.created_at);
+      return leadDate >= startOfCustomStart && leadDate <= endOfCustomEnd;
+    });
+  } else {
+    // Use standard date range filtering
+    const analyticsFilterDate = getDateRange(timeRange);
+    analyticsLeads = analyticsFilterDate
+      ? dbLeads.filter(lead => new Date(lead.created_at) >= analyticsFilterDate)
+      : dbLeads;
+  }
 
   // Basic metrics
   const totalLeads = analyticsLeads.length;

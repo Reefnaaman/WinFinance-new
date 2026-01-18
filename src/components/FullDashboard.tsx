@@ -189,7 +189,7 @@ export default function FullDashboard() {
   ];
 
   // Calculate analytics for dashboard pages
-  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders);
+  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders, customDateRange);
 
   // Calculate filter counts for real-time badges
   const filterCounts = {
@@ -476,11 +476,13 @@ export default function FullDashboard() {
       <main className="max-w-none mx-auto px-2 sm:px-4 py-6 md:py-8">
         {currentPage === 'home' && (
           <HomePage
-            dbLeads={filteredLeads}
+            dbLeads={dbLeads}  // Pass ALL leads, not filtered leads, so analytics can be calculated properly
             dbAgents={dbAgents}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
             currentUser={user}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
             loading={loading}
           />
         )}

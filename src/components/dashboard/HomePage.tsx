@@ -30,6 +30,10 @@ export interface HomePageProps {
   setTimeRange: (range: string) => void;
   /** Current logged-in user */
   currentUser?: Agent | null;
+  /** Custom date range for analytics */
+  customDateRange?: DateRange;
+  /** Function to update custom date range */
+  onCustomDateRangeChange?: (dateRange: DateRange) => void;
   /** Optional CSS class name */
   className?: string;
   /** Data is still loading */
@@ -62,6 +66,8 @@ export default function HomePage({
   timeRange,
   setTimeRange,
   currentUser,
+  customDateRange,
+  onCustomDateRangeChange,
   className = "",
   loading = false
 }: HomePageProps) {
@@ -69,14 +75,15 @@ export default function HomePage({
   // STATE MANAGEMENT
   // ============================================================================
 
-  // Custom date range state for date picker
-  const [customDateRange, setCustomDateRange] = useState<DateRange>(() => {
+  // Custom date range comes from props, use fallback if not provided
+  const defaultCustomDateRange: DateRange = (() => {
     const now = new Date();
     return {
       startDate: new Date(now.getFullYear(), now.getMonth(), 1),
       endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
     };
-  });
+  })();
+  const currentCustomDateRange = customDateRange || defaultCustomDateRange;
 
   // ============================================================================
   // CALCULATE ANALYTICS DATA
@@ -86,7 +93,7 @@ export default function HomePage({
   const leadProviders = dbAgents.filter(agent => agent.role === 'lead_supplier');
 
   // Calculate analytics based on current time range
-  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders);
+  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders, currentCustomDateRange);
 
   const {
     totalLeads,
@@ -150,8 +157,8 @@ export default function HomePage({
           timeRange={timeRange}
           setTimeRange={setTimeRange}
           currentUser={currentUser}
-          customDateRange={customDateRange}
-          onCustomDateRangeChange={setCustomDateRange}
+          customDateRange={currentCustomDateRange}
+          onCustomDateRangeChange={onCustomDateRangeChange}
         />
       </div>
 
