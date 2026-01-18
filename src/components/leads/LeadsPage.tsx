@@ -541,24 +541,13 @@ export default function LeadsPage({
                             </div>
                             <div>
                               <h3 className="font-semibold text-slate-900">{lead.lead_name}</h3>
-                              <div className="text-xs text-slate-500">
-                                <div>
-                                  נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: '2-digit'
-                                  })}
-                                </div>
-                                {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
-                                  <div>
-                                    עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      year: '2-digit'
-                                    })}
-                                  </div>
-                                )}
-                              </div>
+                              <p className="text-xs text-slate-500">
+                                נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: '2-digit'
+                                })}
+                              </p>
                             </div>
                           </div>
 
@@ -632,13 +621,22 @@ export default function LeadsPage({
                             </div>
 
                             {/* Status Badge - Center */}
-                            <div className="flex justify-center">
+                            <div className="flex flex-col items-center gap-1">
                               {status ? (
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status.lightBg} ${status.text}`}>
                                   {status.label}
                                 </span>
                               ) : (
                                 <span className="text-xs text-slate-400">אין סטטוס</span>
+                              )}
+                              {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                <div className="text-xs text-gray-500">
+                                  עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
                               )}
                             </div>
 
@@ -973,24 +971,13 @@ export default function LeadsPage({
                                       >
                                         {lead.lead_name}
                                       </h3>
-                                      <div className="text-xs text-slate-500">
-                                        <div>
-                                          נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: '2-digit'
-                                          })}
-                                        </div>
-                                        {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
-                                          <div>
-                                            עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
-                                              day: '2-digit',
-                                              month: '2-digit',
-                                              year: '2-digit'
-                                            })}
-                                          </div>
-                                        )}
-                                      </div>
+                                      <p className="text-xs text-slate-500">
+                                        נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: '2-digit'
+                                        })}
+                                      </p>
                                     </div>
                                   )}
                                 </div>
@@ -1047,6 +1034,15 @@ export default function LeadsPage({
                                 placeholder="בחר סטטוס"
                                 compact
                               />
+                              {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                <div className="text-xs text-gray-500 mt-1 text-center">
+                                  עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
+                              )}
                             </div>
 
                             {/* Meeting Date */}
@@ -1174,24 +1170,13 @@ export default function LeadsPage({
                                       >
                                         {lead.lead_name}
                                       </h3>
-                                      <div className="text-xs text-slate-500">
-                                        <div>
-                                          נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: '2-digit'
-                                          })}
-                                        </div>
-                                        {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
-                                          <div>
-                                            עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
-                                              day: '2-digit',
-                                              month: '2-digit',
-                                              year: '2-digit'
-                                            })}
-                                          </div>
-                                        )}
-                                      </div>
+                                      <p className="text-xs text-slate-500">
+                                        נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: '2-digit'
+                                        })}
+                                      </p>
                                     </div>
                                   )}
                                 </div>
@@ -1292,6 +1277,15 @@ export default function LeadsPage({
                                 placeholder="בחר סטטוס"
                                 compact
                               />
+                              {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                <div className="text-xs text-gray-500 mt-1 text-center">
+                                  עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
+                              )}
                             </div>
 
                             {/* Agent */}
