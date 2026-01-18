@@ -3,15 +3,19 @@ import { createServerClient } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, role } = await request.json();
+    const { name, email, password, role } = await request.json();
 
     // Create admin client with service role
     const adminSupabase = createServerClient();
 
+    if (!adminSupabase) {
+      return NextResponse.json({ error: 'Database connection not available' }, { status: 503 });
+    }
+
     // First create the auth user
     const { data: authUser, error: authError } = await adminSupabase.auth.admin.createUser({
       email,
-      password: 'TempPassword123!', // Temporary password - user should reset
+      password: password || 'TempPassword123!', // Use provided password or default
       email_confirm: true
     });
 

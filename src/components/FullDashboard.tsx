@@ -131,8 +131,8 @@ export default function FullDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]); // Only run when user ID changes (login/logout), not on every user object update
 
-  // Show loading screen while checking authentication
-  if (authLoading) {
+  // Show loading screen while checking authentication or during hydration
+  if (authLoading || !isHydrated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center" dir="rtl">
         <div className="text-center">
