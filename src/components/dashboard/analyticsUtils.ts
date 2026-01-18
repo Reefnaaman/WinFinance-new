@@ -57,21 +57,26 @@ export const calculateAnalytics = (
   let analyticsLeads: Lead[];
 
   if (timeRange === 'custom' && customDateRange) {
-    // Handle custom date range filtering - use updated_at to track agent activity
+    // Handle custom date range filtering - include leads created OR updated in period
     const startOfCustomStart = new Date(customDateRange.startDate);
     startOfCustomStart.setHours(0, 0, 0, 0);
     const endOfCustomEnd = new Date(customDateRange.endDate);
     endOfCustomEnd.setHours(23, 59, 59, 999);
 
     analyticsLeads = dbLeads.filter(lead => {
-      const leadDate = new Date(lead.updated_at);
-      return leadDate >= startOfCustomStart && leadDate <= endOfCustomEnd;
+      const updatedInPeriod = new Date(lead.updated_at) >= startOfCustomStart && new Date(lead.updated_at) <= endOfCustomEnd;
+      const createdInPeriod = new Date(lead.created_at) >= startOfCustomStart && new Date(lead.created_at) <= endOfCustomEnd;
+      return updatedInPeriod || createdInPeriod;
     });
   } else {
-    // Use standard date range filtering - use updated_at to track when agents worked on leads
+    // Use standard date range filtering - include leads created OR updated in period
     const analyticsFilterDate = getDateRange(timeRange);
     analyticsLeads = analyticsFilterDate
-      ? dbLeads.filter(lead => new Date(lead.updated_at) >= analyticsFilterDate)
+      ? dbLeads.filter(lead => {
+          const updatedInPeriod = new Date(lead.updated_at) >= analyticsFilterDate;
+          const createdInPeriod = new Date(lead.created_at) >= analyticsFilterDate;
+          return updatedInPeriod || createdInPeriod;
+        })
       : dbLeads;
   }
 
@@ -268,16 +273,18 @@ export const calculateMonthOverMonth = (allLeads: Lead[]): MonthOverMonthData =>
   const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  // Current month leads - filter by when agents worked on them (updated_at)
+  // Current month leads - filter by creation OR update activity
   const currentMonthLeads = allLeads.filter(lead => {
-    const leadDate = new Date(lead.updated_at);
-    return leadDate >= currentMonthStart;
+    const updatedInCurrentMonth = new Date(lead.updated_at) >= currentMonthStart;
+    const createdInCurrentMonth = new Date(lead.created_at) >= currentMonthStart;
+    return updatedInCurrentMonth || createdInCurrentMonth;
   });
 
-  // Previous month leads - filter by when agents worked on them (updated_at)
+  // Previous month leads - filter by creation OR update activity
   const previousMonthLeads = allLeads.filter(lead => {
-    const leadDate = new Date(lead.updated_at);
-    return leadDate >= previousMonthStart && leadDate <= previousMonthEnd;
+    const updatedInPreviousMonth = new Date(lead.updated_at) >= previousMonthStart && new Date(lead.updated_at) <= previousMonthEnd;
+    const createdInPreviousMonth = new Date(lead.created_at) >= previousMonthStart && new Date(lead.created_at) <= previousMonthEnd;
+    return updatedInPreviousMonth || createdInPreviousMonth;
   });
 
   // Calculate metrics for current month
