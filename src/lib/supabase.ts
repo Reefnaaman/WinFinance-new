@@ -13,8 +13,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
+    detectSessionInUrl: false, // Prevent URL-based session conflicts
+    flowType: 'pkce',
+    storageKey: 'supabase-auth-token' // Explicit storage key
   },
   db: {
     schema: 'public'

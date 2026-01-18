@@ -16,6 +16,7 @@ import Image from 'next/image';
 
 export default function FullDashboard() {
   const { user, loading: authLoading, logout, canCreateLeads, canViewAllLeads } = useAuth();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [activeAgent, setActiveAgent] = useState('all');
   const [activeStatus, setActiveStatus] = useState('all');
@@ -94,13 +95,18 @@ export default function FullDashboard() {
     }
   };
 
+  // Hydration effect
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   // useEffect MUST be before any conditional returns
   // Only fetch data once auth is complete and user is available
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user && !authLoading && isHydrated) {
       fetchData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isHydrated]);
 
   // Set default page and sorting based on role
   // Only set initial page on first mount, not on every user update
@@ -424,15 +430,7 @@ export default function FullDashboard() {
               </div>
               <p className="text-sm font-medium text-slate-700">{user.name}</p>
               <button
-                onClick={async () => {
-                  try {
-                    await logout();
-                    // Force a page reload to ensure clean state
-                    window.location.href = '/';
-                  } catch (error) {
-                    console.error('Logout failed:', error);
-                  }
-                }}
+                onClick={logout}
                 className="ml-2 px-3 py-1.5 text-sm text-slate-800 bg-red-500/30 hover:text-slate-900 hover:bg-red-500/40 rounded-lg transition-colors"
               >
                 יציאה

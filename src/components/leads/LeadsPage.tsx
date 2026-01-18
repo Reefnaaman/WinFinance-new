@@ -140,7 +140,15 @@ export default function LeadsPage({
     if (!editingField) return;
 
     try {
-      await updateLeadField(editingField.leadId, editingField.field as any, editingValue);
+      // Convert price to number if editing price field
+      let valueToSave = editingValue;
+      if (editingField.field === 'price') {
+        // Remove any non-numeric characters except decimal point
+        const cleanedValue = editingValue.replace(/[^\d.]/g, '');
+        valueToSave = cleanedValue ? parseFloat(cleanedValue).toString() : '0';
+      }
+
+      await updateLeadField(editingField.leadId, editingField.field as any, valueToSave);
       setEditingField(null);
       setEditingValue('');
       await fetchData();
@@ -789,16 +797,21 @@ export default function LeadsPage({
                                 <label className="text-xs text-slate-500 mb-1 block">מחיר</label>
                                 {editingField?.leadId === lead.id && editingField?.field === 'price' ? (
                                   <input
-                                    type="text"
+                                    type="number"
                                     value={editingValue}
                                     onChange={(e) => setEditingValue(e.target.value)}
                                     onBlur={saveEdit}
                                     onKeyDown={(e) => {
-                                      if (e.key === 'Enter') saveEdit();
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        saveEdit();
+                                      }
                                       if (e.key === 'Escape') cancelEdit();
                                     }}
                                     className="w-full px-2 py-1.5 border border-blue-400 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm text-center bg-white"
                                     placeholder="0"
+                                    min="0"
+                                    step="1"
                                     autoFocus
                                   />
                                 ) : (
@@ -1025,16 +1038,21 @@ export default function LeadsPage({
                             <div className="col-span-1 flex items-center justify-center">
                               {editingField?.leadId === lead.id && editingField?.field === 'price' ? (
                                 <input
-                                  type="text"
+                                  type="number"
                                   value={editingValue}
                                   onChange={(e) => setEditingValue(e.target.value)}
                                   onBlur={saveEdit}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      saveEdit();
+                                    }
                                     if (e.key === 'Escape') cancelEdit();
                                   }}
                                   className="w-20 px-2 py-1 bg-white border border-blue-400 rounded text-xs text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                   placeholder="0"
+                                  min="0"
+                                  step="1"
                                   autoFocus
                                 />
                               ) : (
@@ -1287,16 +1305,21 @@ export default function LeadsPage({
                             <div className="col-span-1 flex items-center justify-center">
                               {editingField?.leadId === lead.id && editingField?.field === 'price' ? (
                                 <input
-                                  type="text"
+                                  type="number"
                                   value={editingValue}
                                   onChange={(e) => setEditingValue(e.target.value)}
                                   onBlur={saveEdit}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      saveEdit();
+                                    }
                                     if (e.key === 'Escape') cancelEdit();
                                   }}
                                   className="w-20 px-2 py-1 bg-white border border-blue-400 rounded text-xs text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                   placeholder="0"
+                                  min="0"
+                                  step="1"
                                   autoFocus
                                 />
                               ) : (

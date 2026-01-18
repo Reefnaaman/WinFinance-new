@@ -105,11 +105,19 @@ export const updateLeadField = async (leadId: string, field: string, value: any)
       return;
     }
 
+    // Special handling for price field - ensure it's a number
+    let updateValue = value;
+    if (field === 'price') {
+      // Convert to number, default to 0 if invalid
+      updateValue = value ? parseFloat(value) : 0;
+      if (isNaN(updateValue)) updateValue = 0;
+    }
+
     // Normal update for other fields
     const { error } = await supabase
       .from('leads')
       // @ts-ignore
-      .update({ [field]: value })
+      .update({ [field]: updateValue })
       .eq('id', leadId);
 
     if (error) throw error;

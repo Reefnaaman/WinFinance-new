@@ -32,46 +32,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let mounted = true;
+
     // Check for existing session on mount
     console.log('AuthContext: Checking for existing session...')
-    checkUser()
 
-    // Listen for auth changes
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (!mounted) return; // Prevent state updates if component unmounted
+
+        if (error) {
+          console.error('Session error:', error)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        if (session?.user?.email) {
+          console.log('Session found, fetching user data for:', session.user.email)
+          await fetchUserData(session.user.email)
+        } else {
+          console.log('No session found, user not logged in')
+          setUser(null)
+          setLoading(false)
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error('Error initializing auth:', error)
+          setUser(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    initializeAuth()
+
+    // Listen for auth changes - only handle sign out to avoid race conditions
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email)
-      if (event === 'SIGNED_IN' && session?.user?.email) {
-        await fetchUserData(session.user.email) // fetchUserData now handles setLoading
-      } else if (event === 'SIGNED_OUT') {
+
+      if (!mounted) return;
+
+      if (event === 'SIGNED_OUT') {
         setUser(null)
         setLoading(false)
+      } else if (event === 'SIGNED_IN' && session?.user?.email) {
+        // Only handle sign in if we don't already have a user to prevent race conditions
+        if (!user) {
+          await fetchUserData(session.user.email)
+        }
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Session refreshed, but don't refetch user data if we already have it
+        console.log('Token refreshed, maintaining current user state')
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false;
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const checkUser = async () => {
-    try {
-      console.log('Fetching session...')
-      const { data: { session }, error } = await supabase.auth.getSession()
-      console.log('Session result:', session, 'Error:', error)
-
-      if (session?.user?.email) {
-        console.log('Session found, fetching user data for:', session.user.email)
-        await fetchUserData(session.user.email)
-        // Don't set loading false here since fetchUserData handles it
-      } else {
-        // No session, so no user logged in
-        console.log('No session found, user not logged in')
-        setUser(null)
-        setLoading(false) // Only set loading false here if no session
-      }
-    } catch (error) {
-      console.error('Error checking user:', error)
-      setUser(null)
-      setLoading(false) // Set loading false on error
-    }
-  }
 
   const fetchUserData = async (email: string) => {
     try {
@@ -125,10 +148,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      setLoading(true)
       await supabase.auth.signOut()
       setUser(null)
+      setLoading(false)
     } catch (error) {
       console.error('Error signing out:', error)
+      setUser(null)
+      setLoading(false)
     }
   }
 
