@@ -68,6 +68,8 @@ export interface FiltersBarProps {
   children?: React.ReactNode;
   /** Total leads count */
   totalLeads?: number;
+  /** Current user role to determine which filters to show */
+  userRole?: string;
 }
 
 // ============================================================================
@@ -113,7 +115,8 @@ export default function FiltersBar({
   filterCounts,
   className = "",
   children,
-  totalLeads = 0
+  totalLeads = 0,
+  userRole
 }: FiltersBarProps) {
   // State for mobile filter panel
   const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false);
@@ -122,12 +125,12 @@ export default function FiltersBar({
   // COMPUTED VALUES
   // ============================================================================
 
-  // Count active filters
+  // Count active filters (exclude filters not visible to agents)
   const activeFiltersCount = [
-    activeAgent !== 'all',
+    userRole !== 'agent' && activeAgent !== 'all',
     activeStatus !== 'all',
-    activeSource !== 'all',
-    activeRelevance !== 'all',
+    userRole !== 'agent' && activeSource !== 'all',
+    userRole !== 'agent' && activeRelevance !== 'all',
     timeRange !== 'current_month',
     searchTerm.length > 0
   ].filter(Boolean).length;
@@ -137,10 +140,12 @@ export default function FiltersBar({
   // ============================================================================
 
   const handleClearAllFilters = () => {
-    setActiveAgent('all');
+    if (userRole !== 'agent') {
+      setActiveAgent('all');
+      setActiveSource('all');
+      setActiveRelevance('all');
+    }
     setActiveStatus('all');
-    setActiveSource('all');
-    setActiveRelevance('all');
     setTimeRange('current_month');
     setSearchTerm('');
   };
@@ -250,18 +255,20 @@ export default function FiltersBar({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">סוכן</label>
-                <AgentFilter
-                  value={activeAgent}
-                  onChange={setActiveAgent}
-                  agents={agents}
-                  showCounts={false}
-                  leadCounts={filterCounts?.agents}
-                  width="sm"
-                />
-              </div>
+            <div className={`grid gap-2 ${userRole === 'agent' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              {userRole !== 'agent' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">סוכן</label>
+                  <AgentFilter
+                    value={activeAgent}
+                    onChange={setActiveAgent}
+                    agents={agents}
+                    showCounts={false}
+                    leadCounts={filterCounts?.agents}
+                    width="sm"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">סטטוס</label>
@@ -275,29 +282,33 @@ export default function FiltersBar({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">מקור</label>
-                <SourceFilter
-                  value={activeSource}
-                  onChange={setActiveSource}
-                  sources={sources}
-                  showCounts={false}
-                  leadCounts={filterCounts?.sources}
-                  width="sm"
-                />
-              </div>
+              {userRole !== 'agent' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">מקור</label>
+                  <SourceFilter
+                    value={activeSource}
+                    onChange={setActiveSource}
+                    sources={sources}
+                    showCounts={false}
+                    leadCounts={filterCounts?.sources}
+                    width="sm"
+                  />
+                </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">רלוונטיות</label>
-                <RelevanceFilter
-                  value={activeRelevance}
-                  onChange={setActiveRelevance}
-                  relevanceStatuses={relevanceStatuses}
-                  showCounts={false}
-                  leadCounts={filterCounts?.relevance}
-                  width="sm"
-                />
-              </div>
+              {userRole !== 'agent' && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">רלוונטיות</label>
+                  <RelevanceFilter
+                    value={activeRelevance}
+                    onChange={setActiveRelevance}
+                    relevanceStatuses={relevanceStatuses}
+                    showCounts={false}
+                    leadCounts={filterCounts?.relevance}
+                    width="sm"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Clear Filters Button */}
@@ -384,19 +395,21 @@ export default function FiltersBar({
               </div>
 
               <div className="flex gap-2">
-                {/* Agent Filter */}
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    סוכן
-                  </label>
-                  <AgentFilter
-                    value={activeAgent}
-                    onChange={setActiveAgent}
-                    agents={agents}
-                    showCounts={false}
-                    leadCounts={filterCounts?.agents}
-                  />
-                </div>
+                {/* Agent Filter - Hidden for agents */}
+                {userRole !== 'agent' && (
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      סוכן
+                    </label>
+                    <AgentFilter
+                      value={activeAgent}
+                      onChange={setActiveAgent}
+                      agents={agents}
+                      showCounts={false}
+                      leadCounts={filterCounts?.agents}
+                    />
+                  </div>
+                )}
 
                 {/* Status Filter */}
                 <div className="flex-1">
@@ -412,33 +425,37 @@ export default function FiltersBar({
                   />
                 </div>
 
-                {/* Source Filter */}
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    מקור
-                  </label>
-                  <SourceFilter
-                    value={activeSource}
-                    onChange={setActiveSource}
-                    sources={sources}
-                    showCounts={false}
-                    leadCounts={filterCounts?.sources}
-                  />
-                </div>
+                {/* Source Filter - Hidden for agents */}
+                {userRole !== 'agent' && (
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      מקור
+                    </label>
+                    <SourceFilter
+                      value={activeSource}
+                      onChange={setActiveSource}
+                      sources={sources}
+                      showCounts={false}
+                      leadCounts={filterCounts?.sources}
+                    />
+                  </div>
+                )}
 
-                {/* Relevance Filter */}
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    רלוונטיות
-                  </label>
-                  <RelevanceFilter
-                    value={activeRelevance}
-                    onChange={setActiveRelevance}
-                    relevanceStatuses={relevanceStatuses}
-                    showCounts={false}
-                    leadCounts={filterCounts?.relevance}
-                  />
-                </div>
+                {/* Relevance Filter - Hidden for agents */}
+                {userRole !== 'agent' && (
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      רלוונטיות
+                    </label>
+                    <RelevanceFilter
+                      value={activeRelevance}
+                      onChange={setActiveRelevance}
+                      relevanceStatuses={relevanceStatuses}
+                      showCounts={false}
+                      leadCounts={filterCounts?.relevance}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -460,7 +477,7 @@ export default function FiltersBar({
               </span>
             )}
 
-            {activeAgent !== 'all' && (
+            {userRole !== 'agent' && activeAgent !== 'all' && (
               <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-md">
                 סוכן: {agents.find(a => a.id === activeAgent)?.name || 'לא ידוע'}
                 <button onClick={() => setActiveAgent('all')} className="mr-1 text-blue-500 hover:text-blue-700">×</button>
@@ -474,14 +491,14 @@ export default function FiltersBar({
               </span>
             )}
 
-            {activeSource !== 'all' && (
+            {userRole !== 'agent' && activeSource !== 'all' && (
               <span className="inline-flex items-center px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded-md">
                 מקור: {sources.find(s => s.id === activeSource)?.label || 'לא ידוע'}
                 <button onClick={() => setActiveSource('all')} className="mr-1 text-purple-500 hover:text-purple-700">×</button>
               </span>
             )}
 
-            {activeRelevance !== 'all' && (
+            {userRole !== 'agent' && activeRelevance !== 'all' && (
               <span className="inline-flex items-center px-2 py-1 text-xs bg-teal-50 text-teal-700 rounded-md">
                 רלוונטיות: {relevanceStatuses.find(r => r.id === activeRelevance)?.label || 'לא ידוע'}
                 <button onClick={() => setActiveRelevance('all')} className="mr-1 text-teal-500 hover:text-teal-700">×</button>

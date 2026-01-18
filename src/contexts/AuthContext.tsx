@@ -31,8 +31,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const fetchUserData = async (email: string) => {
+    try {
+      console.log('Fetching user data for email:', email)
+
+      // Simple, direct query with lowercase email
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single()
+
+      if (error) {
+        console.error('Database error:', error.message)
+        setUser(null)
+      } else if (data) {
+        console.log('Agent found:', (data as Agent).name)
+        setUser(data as Agent)
+      } else {
+        console.error('No agent found for email:', email)
+        setUser(null)
+      }
+    } catch (error) {
+      console.error('Error in fetchUserData:', error)
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     let mounted = true;
+    let authListenerInitialized = false;
 
     // Check for existing session on mount
     console.log('AuthContext: Checking for existing session...')
@@ -64,25 +94,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null)
           setLoading(false)
         }
+      } finally {
+        authListenerInitialized = true;
       }
     }
 
     initializeAuth()
 
-    // Listen for auth changes - only handle sign out to avoid race conditions
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email)
 
-      if (!mounted) return;
+      if (!mounted || !authListenerInitialized) return;
 
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setLoading(false)
       } else if (event === 'SIGNED_IN' && session?.user?.email) {
-        // Only handle sign in if we don't already have a user to prevent race conditions
-        if (!user) {
-          await fetchUserData(session.user.email)
-        }
+        // For sign in events, always fetch user data
+        setLoading(true)
+        await fetchUserData(session.user.email)
       } else if (event === 'TOKEN_REFRESHED') {
         // Session refreshed, but don't refetch user data if we already have it
         console.log('Token refreshed, maintaining current user state')
@@ -93,37 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe()
     }
-  }, [])
-
-
-  const fetchUserData = async (email: string) => {
-    try {
-      console.log('Fetching user data for email:', email)
-
-      // Simple, direct query with lowercase email
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .single()
-
-      if (error) {
-        console.error('Database error:', error.message)
-        setUser(null)
-      } else if (data) {
-        console.log('Agent found:', (data as Agent).name)
-        setUser(data as Agent)
-      } else {
-        console.error('No agent found for email:', email)
-        setUser(null)
-      }
-    } catch (error) {
-      console.error('Error in fetchUserData:', error)
-      setUser(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, []) // Empty dependency array to avoid re-running
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {

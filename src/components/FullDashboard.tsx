@@ -163,12 +163,15 @@ export default function FullDashboard() {
     })),
     { id: 'manual', label: 'ידני', icon: 'Edit', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
     { id: 'other', label: 'אחר', icon: 'MoreHorizontal', color: 'bg-slate-500', lightBg: 'bg-slate-50', text: 'text-slate-700' },
-    // Legacy mappings for backward compatibility with existing data
-    { id: 'Email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
-    { id: 'Excel Import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
-    { id: 'Manual', label: 'ידני', icon: 'Edit', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
-    { id: 'Other', label: 'אחר', icon: 'MoreHorizontal', color: 'bg-slate-500', lightBg: 'bg-slate-50', text: 'text-slate-700' },
   ];
+
+  // Legacy source mapping for backward compatibility
+  const legacySourceMap: Record<string, string> = {
+    'Email': 'email',
+    'Excel Import': 'excel_import',
+    'Manual': 'manual',
+    'Other': 'other'
+  };
 
   // Status definitions - all 7 statuses from database
   const agentStatuses = [
@@ -216,9 +219,12 @@ export default function FullDashboard() {
     filterCounts.statuses[status.id] = dbLeads.filter(lead => lead.status === status.id).length;
   });
 
-  // Count leads per source
+  // Count leads per source (including legacy mappings)
   sources.forEach(source => {
-    filterCounts.sources[source.id] = dbLeads.filter(lead => lead.source === source.id).length;
+    filterCounts.sources[source.id] = dbLeads.filter(lead =>
+      lead.source === source.id ||
+      legacySourceMap[lead.source] === source.id
+    ).length;
   });
 
   // Count leads per relevance status
@@ -228,9 +234,8 @@ export default function FullDashboard() {
 
   const filteredLeads = dbLeads.filter(lead => {
     // Role-based filtering: agents only see their assigned leads
-    if (user?.role === 'agent') {
-      const matches = lead.assigned_agent_id === user.id;
-      return matches;
+    if (user?.role === 'agent' && lead.assigned_agent_id !== user.id) {
+      return false;
     }
 
     // Lead suppliers only see leads they created
@@ -260,14 +265,16 @@ export default function FullDashboard() {
       }
     }
 
-    // Agent filtering
-    const matchesAgent = activeAgent === 'all' || lead.assigned_agent_id === activeAgent;
+    // Agent filtering (only apply for non-agent users, since agents already filtered above)
+    const matchesAgent = user?.role === 'agent' || activeAgent === 'all' || lead.assigned_agent_id === activeAgent;
 
     // Status filtering
     const matchesStatus = activeStatus === 'all' || lead.status === activeStatus;
 
-    // Source filtering
-    const matchesSource = activeSource === 'all' || lead.source === activeSource;
+    // Source filtering with legacy compatibility
+    const matchesSource = activeSource === 'all' ||
+                          lead.source === activeSource ||
+                          (legacySourceMap[lead.source] === activeSource);
 
     // Relevance filtering
     const matchesRelevance = activeRelevance === 'all' || lead.relevance_status === activeRelevance;

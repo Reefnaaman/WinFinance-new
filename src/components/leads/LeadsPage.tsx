@@ -299,6 +299,7 @@ export default function LeadsPage({
           filterCounts={filterCounts}
           className="mb-4 md:mb-6"
           totalLeads={filteredLeads.length}
+          userRole={user?.role}
         >
           <ActionButtons
             fetchData={fetchData}
@@ -540,13 +541,24 @@ export default function LeadsPage({
                             </div>
                             <div>
                               <h3 className="font-semibold text-slate-900">{lead.lead_name}</h3>
-                              <p className="text-xs text-slate-500">
-                                נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit'
-                                })}
-                              </p>
+                              <div className="text-xs text-slate-500">
+                                <div>
+                                  נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
+                                {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                  <div>
+                                    עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: '2-digit'
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -961,13 +973,24 @@ export default function LeadsPage({
                                       >
                                         {lead.lead_name}
                                       </h3>
-                                      <p className="text-xs text-slate-500">
-                                        נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit'
-                                })}
-                                      </p>
+                                      <div className="text-xs text-slate-500">
+                                        <div>
+                                          נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: '2-digit'
+                                          })}
+                                        </div>
+                                        {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                          <div>
+                                            עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: '2-digit'
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -1151,13 +1174,24 @@ export default function LeadsPage({
                                       >
                                         {lead.lead_name}
                                       </h3>
-                                      <p className="text-xs text-slate-500">
-                                        נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit'
-                                })}
-                                      </p>
+                                      <div className="text-xs text-slate-500">
+                                        <div>
+                                          נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: '2-digit'
+                                          })}
+                                        </div>
+                                        {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                          <div>
+                                            עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                              year: '2-digit'
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
