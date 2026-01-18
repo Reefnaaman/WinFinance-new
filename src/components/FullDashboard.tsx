@@ -151,8 +151,8 @@ export default function FullDashboard() {
   // Dynamic sources - includes lead providers
   const leadProviders = dbAgents.filter(agent => agent.role === 'lead_supplier');
   const sources = [
-    { id: 'Email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
-    { id: 'Excel Import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
+    { id: 'email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'excel_import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
     ...leadProviders.map((provider, index) => ({
       id: provider.name,
       label: provider.name,
@@ -161,6 +161,11 @@ export default function FullDashboard() {
       lightBg: ['bg-emerald-50', 'bg-teal-50', 'bg-green-50', 'bg-cyan-50'][index % 4],
       text: ['text-emerald-700', 'text-teal-700', 'text-green-700', 'text-cyan-700'][index % 4]
     })),
+    { id: 'manual', label: 'ידני', icon: 'Edit', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
+    { id: 'other', label: 'אחר', icon: 'MoreHorizontal', color: 'bg-slate-500', lightBg: 'bg-slate-50', text: 'text-slate-700' },
+    // Legacy mappings for backward compatibility with existing data
+    { id: 'Email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'Excel Import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
     { id: 'Manual', label: 'ידני', icon: 'Edit', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
     { id: 'Other', label: 'אחר', icon: 'MoreHorizontal', color: 'bg-slate-500', lightBg: 'bg-slate-50', text: 'text-slate-700' },
   ];

@@ -184,13 +184,13 @@ export default function LeadEntryForm({ onLeadCreated }: LeadEntryFormProps) {
                     מקור הליד
                   </label>
                   <select
-                    value={formData.source || 'Manual'}
+                    value={formData.source || 'manual'}
                     onChange={(e) => setFormData({ ...formData, source: e.target.value as LeadInsert['source'] })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="Manual">הזנה ידנית</option>
-                    <option value="Email">אימייל</option>
-                    <option value="Other">אחר</option>
+                    <option value="manual">הזנה ידנית</option>
+                    <option value="email">אימייל</option>
+                    <option value="other">אחר</option>
                   </select>
                 </div>
               )}

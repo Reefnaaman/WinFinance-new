@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
@@ -11,6 +10,9 @@ export async function PATCH(
     if (!password) {
       return NextResponse.json({ error: 'Password is required' }, { status: 400 });
     }
+
+    // Dynamically import to avoid build-time errors
+    const { createServerClient } = await import('@/lib/supabase');
 
     // Create admin client with service role
     const adminSupabase = createServerClient();

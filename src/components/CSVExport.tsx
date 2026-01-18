@@ -230,9 +230,12 @@ export default function CSVExport({ currentFilters = {}, agents = [] }: CSVExpor
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     >
                       <option value="">הכל</option>
-                      <option value="Email">אימייל</option>
-                      <option value="Manual">ידני</option>
-                      <option value="Other">אחר</option>
+                      <option value="email">אימייל</option>
+                      <option value="Email">אימייל (ישן)</option>
+                      <option value="manual">ידני</option>
+                      <option value="Manual">ידני (ישן)</option>
+                      <option value="other">אחר</option>
+                      <option value="Other">אחר (ישן)</option>
                     </select>
                     {exportFilters.source && (
                       <button
