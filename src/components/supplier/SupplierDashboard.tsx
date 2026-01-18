@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Lead, Agent } from '@/lib/database.types';
 import SupplierLeadsTable from './SupplierLeadsTable';
 import SupplierLeadEntryForm from './SupplierLeadEntryForm';
+import ModernCompactStatusChart from '../dashboard/ModernCompactStatusChart';
 import { Plus, X } from 'lucide-react';
 
 interface SupplierDashboardProps {
@@ -103,6 +104,15 @@ export default function SupplierDashboard({
             <span>נכשל: {stats.failedDeals}</span>
           </div>
         </div>
+      </div>
+
+      {/* Status Distribution Chart */}
+      <div className="animate-fade-in-up animation-delay-300">
+        <ModernCompactStatusChart
+          analyticsLeads={supplierLeads}
+          totalLeads={stats.totalLeads}
+          className="w-full"
+        />
       </div>
 
       {/* Search Bar with Action Button */}

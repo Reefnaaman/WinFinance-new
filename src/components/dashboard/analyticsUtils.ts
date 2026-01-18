@@ -57,21 +57,21 @@ export const calculateAnalytics = (
   let analyticsLeads: Lead[];
 
   if (timeRange === 'custom' && customDateRange) {
-    // Handle custom date range filtering
+    // Handle custom date range filtering - use updated_at to track agent activity
     const startOfCustomStart = new Date(customDateRange.startDate);
     startOfCustomStart.setHours(0, 0, 0, 0);
     const endOfCustomEnd = new Date(customDateRange.endDate);
     endOfCustomEnd.setHours(23, 59, 59, 999);
 
     analyticsLeads = dbLeads.filter(lead => {
-      const leadDate = new Date(lead.created_at);
+      const leadDate = new Date(lead.updated_at);
       return leadDate >= startOfCustomStart && leadDate <= endOfCustomEnd;
     });
   } else {
-    // Use standard date range filtering
+    // Use standard date range filtering - use updated_at to track when agents worked on leads
     const analyticsFilterDate = getDateRange(timeRange);
     analyticsLeads = analyticsFilterDate
-      ? dbLeads.filter(lead => new Date(lead.created_at) >= analyticsFilterDate)
+      ? dbLeads.filter(lead => new Date(lead.updated_at) >= analyticsFilterDate)
       : dbLeads;
   }
 
@@ -268,15 +268,15 @@ export const calculateMonthOverMonth = (allLeads: Lead[]): MonthOverMonthData =>
   const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  // Current month leads
+  // Current month leads - filter by when agents worked on them (updated_at)
   const currentMonthLeads = allLeads.filter(lead => {
-    const leadDate = new Date(lead.created_at);
+    const leadDate = new Date(lead.updated_at);
     return leadDate >= currentMonthStart;
   });
 
-  // Previous month leads
+  // Previous month leads - filter by when agents worked on them (updated_at)
   const previousMonthLeads = allLeads.filter(lead => {
-    const leadDate = new Date(lead.created_at);
+    const leadDate = new Date(lead.updated_at);
     return leadDate >= previousMonthStart && leadDate <= previousMonthEnd;
   });
 
