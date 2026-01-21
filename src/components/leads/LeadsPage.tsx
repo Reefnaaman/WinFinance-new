@@ -371,7 +371,7 @@ export default function LeadsPage({
                 </div>
                 <div className="col-span-1">
                   <SortableHeader
-                    label="רלוונטיות"
+                    label="סטטוס מתאמת"
                     field="relevance"
                     currentSort={sortBy}
                     currentOrder={sortOrder}
@@ -703,7 +703,7 @@ export default function LeadsPage({
                               {/* Relevancy Selector - Only for coordinators/admin */}
                               {(user?.role === 'coordinator' || user?.role === 'admin') ? (
                                 <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">רלוונטיות</label>
+                                  <label className="text-xs text-slate-500 mb-1 block">סטטוס מתאמת</label>
                                   <ModernSelector
                                     value={lead.relevance_status}
                                     onChange={(value) => handleUpdateLeadField(lead.id, 'relevance_status', value)}
@@ -720,7 +720,7 @@ export default function LeadsPage({
                                 </div>
                               ) : (
                                 <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">רלוונטיות</label>
+                                  <label className="text-xs text-slate-500 mb-1 block">סטטוס מתאמת</label>
                                   <div className="py-1">
                                     {
                                       (() => {
@@ -1249,7 +1249,7 @@ export default function LeadsPage({
                                     text: r.text,
                                     icon: r.icon
                                   }))}
-                                  placeholder="בחר רלוונטיות"
+                                  placeholder="בחר סטטוס מתאמת"
                                   compact
                                 />
                               ) : (

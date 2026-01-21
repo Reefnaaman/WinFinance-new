@@ -298,7 +298,7 @@ export default function FiltersBar({
 
               {userRole !== 'agent' && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">רלוונטיות</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">סטטוס מתאמת</label>
                   <RelevanceFilter
                     value={activeRelevance}
                     onChange={setActiveRelevance}
@@ -445,7 +445,7 @@ export default function FiltersBar({
                 {userRole !== 'agent' && (
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-slate-600 mb-1">
-                      רלוונטיות
+                      סטטוס מתאמת
                     </label>
                     <RelevanceFilter
                       value={activeRelevance}
@@ -500,7 +500,7 @@ export default function FiltersBar({
 
             {userRole !== 'agent' && activeRelevance !== 'all' && (
               <span className="inline-flex items-center px-2 py-1 text-xs bg-teal-50 text-teal-700 rounded-md">
-                רלוונטיות: {relevanceStatuses.find(r => r.id === activeRelevance)?.label || 'לא ידוע'}
+                סטטוס מתאמת: {relevanceStatuses.find(r => r.id === activeRelevance)?.label || 'לא ידוע'}
                 <button onClick={() => setActiveRelevance('all')} className="mr-1 text-teal-500 hover:text-teal-700">×</button>
               </span>
             )}

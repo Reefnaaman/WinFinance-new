@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { google } from 'googleapis'
 import { GmailService } from '@/services/gmailService'
+import { DuplicatePreventionService } from '@/services/duplicatePreventionService'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -136,34 +137,24 @@ export async function POST(request: NextRequest) {
             const leadInfo = gmailService.parseLeadFromEmail(emailContent)
 
             if (leadInfo && leadInfo.lead_name && leadInfo.phone) {
-              // Check if lead already exists
-              const { data: existingLead } = await supabase
-                .from('leads')
-                .select('id')
-                .eq('phone', leadInfo.phone)
-                .single()
+              // Use bulletproof duplicate prevention service
+              const duplicateService = new DuplicatePreventionService();
+              const result = await duplicateService.createLeadSafely(
+                {
+                  lead_name: leadInfo.lead_name,
+                  phone: leadInfo.phone,
+                  email: leadInfo.email
+                },
+                'email', // Standardized source
+                'webhook' // Processed by webhook
+              );
 
-              if (!existingLead) {
-                // Create new lead
-                const { data: newLead, error } = await supabase
-                  .from('leads')
-                  .insert({
-                    lead_name: leadInfo.lead_name,
-                    phone: leadInfo.phone,
-                    email: leadInfo.email || '',
-                    source: 'email',
-                    relevance_status: 'ממתין לבדיקה',
-                    created_at: new Date().toISOString()
-                  })
-                  .select()
+              if (result.success) {
+                console.log('✅ Lead created successfully:', leadInfo.lead_name, leadInfo.phone)
+                leadsCreated++
 
-                if (error) {
-                  console.error('Error creating lead:', error)
-                } else {
-                  console.log('Lead created:', leadInfo.lead_name, leadInfo.phone)
-                  leadsCreated++
-
-                  // Mark message as read
+                // Mark message as read
+                try {
                   await gmail.users.messages.modify({
                     userId: 'me',
                     id: message.id!,
@@ -171,9 +162,27 @@ export async function POST(request: NextRequest) {
                       removeLabelIds: ['UNREAD']
                     }
                   })
+                  console.log('📧 Message marked as read')
+                } catch (markError) {
+                  console.error('⚠️ Failed to mark message as read:', markError)
+                }
+              } else if (result.duplicate) {
+                console.log(`⚠️ Duplicate prevented (${result.reason}):`, leadInfo.phone)
+                // Still mark as read since we handled it
+                try {
+                  await gmail.users.messages.modify({
+                    userId: 'me',
+                    id: message.id!,
+                    requestBody: {
+                      removeLabelIds: ['UNREAD']
+                    }
+                  })
+                  console.log('📧 Duplicate email marked as read')
+                } catch (markError) {
+                  console.error('⚠️ Failed to mark duplicate message as read:', markError)
                 }
               } else {
-                console.log('Lead already exists:', leadInfo.phone)
+                console.error('❌ Failed to create lead:', result.error)
               }
             }
           } catch (error) {
