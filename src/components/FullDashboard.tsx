@@ -17,7 +17,23 @@ import Image from 'next/image';
 export default function FullDashboard() {
   const { user, loading: authLoading, logout, canCreateLeads, canViewAllLeads } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
-  const [currentPage, setCurrentPage] = useState('home');
+
+  // Initialize currentPage from sessionStorage or default to 'home'
+  const [currentPage, setCurrentPageState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('winfinance-current-page') || 'home';
+    }
+    return 'home';
+  });
+
+  // Wrapper function to update both state and sessionStorage
+  const setCurrentPage = (page: string) => {
+    setCurrentPageState(page);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('winfinance-current-page', page);
+    }
+  };
+
   const [activeAgent, setActiveAgent] = useState('all');
   const [activeStatus, setActiveStatus] = useState('all');
   const [activeSource, setActiveSource] = useState('all');

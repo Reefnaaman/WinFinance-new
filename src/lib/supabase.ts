@@ -17,6 +17,7 @@ export function getSupabase() {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: false, // Prevents session checks on tab focus/URL changes
     },
     db: {
       schema: 'public'
@@ -31,16 +32,15 @@ export function getSupabase() {
   return supabaseInstance
 }
 
-// For backward compatibility
-export const supabase = new Proxy({} as ReturnType<typeof createClient<Database>>, {
-  get(target, prop) {
-    const client = getSupabase()
-    return (client as any)[prop]
-  }
-})
+// Direct export of singleton instance - no more Proxy pattern
+export const supabase = getSupabase()
 
-// Admin client for server-side operations
-export const createServerClient = () => {
+// Server-side client singleton for API routes
+let serverInstance: ReturnType<typeof createClient<Database>> | null = null
+
+export const getServerSupabase = () => {
+  if (serverInstance) return serverInstance
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -48,5 +48,20 @@ export const createServerClient = () => {
     throw new Error('Missing required Supabase environment variables')
   }
 
-  return createClient<Database>(supabaseUrl, supabaseServiceKey)
+  serverInstance = createClient<Database>(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      persistSession: false, // Server-side doesn't need session persistence
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        'x-application-name': 'lead-management-server'
+      }
+    }
+  })
+
+  return serverInstance
 }
+
+// Backward compatibility
+export const createServerClient = getServerSupabase

@@ -31,8 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Cache to prevent fetching same user multiple times
+  const userCacheRef = React.useRef<{ email: string; user: Agent | null } | null>(null)
+
   const fetchUserData = async (email: string) => {
     try {
+      // Check cache first
+      if (userCacheRef.current?.email === email.toLowerCase()) {
+        console.log('Using cached user data for:', email)
+        setUser(userCacheRef.current.user)
+        setLoading(false)
+        return
+      }
+
       console.log('Fetching user data for email:', email)
 
       // Simple, direct query with lowercase email
@@ -45,16 +56,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Database error:', error.message)
         setUser(null)
+        userCacheRef.current = { email: email.toLowerCase(), user: null }
       } else if (data) {
         console.log('Agent found:', (data as Agent).name)
         setUser(data as Agent)
+        userCacheRef.current = { email: email.toLowerCase(), user: data as Agent }
       } else {
         console.error('No agent found for email:', email)
         setUser(null)
+        userCacheRef.current = { email: email.toLowerCase(), user: null }
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error)
       setUser(null)
+      userCacheRef.current = { email: email.toLowerCase(), user: null }
     } finally {
       setLoading(false)
     }
@@ -81,8 +96,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (session?.user?.email) {
-          console.log('Session found, fetching user data for:', session.user.email)
-          await fetchUserData(session.user.email)
+          console.log('Session found, checking cache for:', session.user.email)
+          // Check cache first to avoid duplicate fetches
+          if (userCacheRef.current?.email === session.user.email.toLowerCase()) {
+            console.log('Using cached user data from init')
+            setUser(userCacheRef.current.user)
+            setLoading(false)
+          } else {
+            console.log('No cache found, fetching user data for:', session.user.email)
+            await fetchUserData(session.user.email)
+          }
         } else {
           console.log('No session found, user not logged in')
           setUser(null)
@@ -103,20 +126,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
+      console.log('Auth state changed:', event, session?.user?.email, 'mounted:', mounted, 'initialized:', authListenerInitialized)
 
-      if (!mounted || !authListenerInitialized) return;
+      if (!mounted || !authListenerInitialized) {
+        console.log('Skipping auth state change - component not ready')
+        return
+      }
 
-      if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setLoading(false)
-      } else if (event === 'SIGNED_IN' && session?.user?.email) {
-        // For sign in events, always fetch user data
-        setLoading(true)
-        await fetchUserData(session.user.email)
-      } else if (event === 'TOKEN_REFRESHED') {
-        // Session refreshed, but don't refetch user data if we already have it
-        console.log('Token refreshed, maintaining current user state')
+      try {
+        if (event === 'SIGNED_OUT') {
+          console.log('User signed out, clearing state')
+          userCacheRef.current = null // Clear cache on sign out
+          setUser(null)
+          setLoading(false)
+        } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user?.email) {
+          // For sign in or initial session events, fetch user data only if we don't have it cached
+          console.log(`User ${event.toLowerCase()}, checking cache...`)
+          if (!userCacheRef.current || userCacheRef.current.email !== session.user.email.toLowerCase()) {
+            setLoading(true)
+            await fetchUserData(session.user.email)
+          } else {
+            console.log(`Using cached user data after ${event.toLowerCase()}`)
+            setUser(userCacheRef.current.user) // Ensure state is set from cache
+            setLoading(false)
+          }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Session refreshed, maintain current state - NO fetching needed
+          console.log('Token refreshed, maintaining current user state:', user?.email)
+          // Only fetch if we truly have no user data
+          if (!user && !userCacheRef.current && session?.user?.email) {
+            console.log('Token refreshed but no user in state or cache, fetching...')
+            await fetchUserData(session.user.email)
+          }
+        }
+      } catch (error) {
+        console.error('Error handling auth state change:', error)
       }
     })
 
@@ -151,10 +195,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true)
       await supabase.auth.signOut()
+      userCacheRef.current = null // Clear cache on logout
       setUser(null)
       setLoading(false)
     } catch (error) {
       console.error('Error signing out:', error)
+      userCacheRef.current = null // Clear cache even on error
       setUser(null)
       setLoading(false)
     }
