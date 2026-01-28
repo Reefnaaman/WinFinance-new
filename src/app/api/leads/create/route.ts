@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         success: false,
         duplicate: true,
         reason: result.reason,
-        message: getHebrewDuplicateMessage(result.reason),
+        message: getHebrewDuplicateMessage(result.reason || 'unknown'),
         existingLead: {
           id: result.existingLead?.id,
           name: result.existingLead?.lead_name,

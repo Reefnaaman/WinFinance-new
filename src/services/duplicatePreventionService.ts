@@ -17,6 +17,28 @@ export interface LeadData {
   email?: string;
 }
 
+// Type definitions for better TypeScript inference
+type DuplicateResult = {
+  success: false;
+  duplicate: true;
+  reason: string;
+  existingLead?: any;
+}
+
+type SuccessResult = {
+  success: true;
+  duplicate: false;
+  lead: any;
+}
+
+type ErrorResult = {
+  success: false;
+  duplicate: false;
+  error: string;
+}
+
+type CreateLeadResult = DuplicateResult | SuccessResult | ErrorResult;
+
 export class DuplicatePreventionService {
   private supabase = getSupabaseClient();
 
@@ -126,7 +148,7 @@ export class DuplicatePreventionService {
    * Create a new lead with duplicate prevention
    * Returns the created lead or existing duplicate
    */
-  async createLeadSafely(leadData: LeadData, source: string = 'email', processedBy: string = 'webhook') {
+  async createLeadSafely(leadData: LeadData, source: string = 'email', processedBy: string = 'webhook'): Promise<CreateLeadResult> {
     console.log(`🔍 Checking for duplicates: ${leadData.lead_name} (${leadData.phone})`);
 
     const duplicateCheck = await this.isDuplicate(leadData);
@@ -152,9 +174,9 @@ export class DuplicatePreventionService {
       return {
         success: false,
         duplicate: true,
-        reason: duplicateCheck.reason,
+        reason: duplicateCheck.reason!,  // We know it exists when isDuplicate is true
         existingLead: duplicateCheck.existingLead
-      };
+      } as DuplicateResult;
     }
 
     // Safe to create new lead
@@ -180,7 +202,7 @@ export class DuplicatePreventionService {
         success: false,
         duplicate: false,
         error: error.message
-      };
+      } as ErrorResult;
     }
 
     console.log(`✅ Lead created successfully: ID ${newLead.id}`);
@@ -188,6 +210,6 @@ export class DuplicatePreventionService {
       success: true,
       duplicate: false,
       lead: newLead
-    };
+    } as SuccessResult;
   }
 }
