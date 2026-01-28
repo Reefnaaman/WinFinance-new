@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { DuplicatePreventionService } from '@/services/duplicatePreventionService'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -46,33 +47,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create lead in database
-    const { data: createdLead, error } = await supabase
-      .from('leads')
-      .insert([{
+    // Use DuplicatePreventionService to prevent duplicates
+    const duplicateService = new DuplicatePreventionService()
+    const result = await duplicateService.createLeadSafely(
+      {
         lead_name: leadData.lead_name,
         phone: leadData.phone,
-        email: leadData.email || null,
-        source: leadData.source || 'Other',
-        relevance_status: 'ממתין לבדיקה',
-        agent_notes: leadData.notes || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
-      .select()
-      .single()
+        email: leadData.email
+      },
+      leadData.source || 'Other',
+      'webhook'
+    )
 
-    if (error) {
-      console.error('Database error:', error)
+    if (result.duplicate) {
+      console.log(`Duplicate prevented via webhook: ${leadData.lead_name} - Reason: ${result.reason}`)
+      return NextResponse.json({
+        success: false,
+        duplicate: true,
+        reason: result.reason,
+        message: `Lead already exists (${result.reason})`,
+        existingLeadId: result.existingLead?.id
+      }, { status: 409 }) // 409 Conflict
+    }
+
+    if (!result.success) {
+      console.error('Failed to create lead:', result.error)
       return NextResponse.json(
-        { error: 'Failed to create lead', details: error.message },
+        { error: 'Failed to create lead', details: result.error },
         { status: 500 }
       )
     }
 
+    // Add notes if provided
+    if (leadData.notes && result.lead) {
+      await supabase
+        .from('leads')
+        .update({ agent_notes: leadData.notes })
+        .eq('id', result.lead.id)
+    }
+
     return NextResponse.json({
       success: true,
-      lead: createdLead,
+      lead: result.lead,
       message: 'Lead created successfully'
     })
 

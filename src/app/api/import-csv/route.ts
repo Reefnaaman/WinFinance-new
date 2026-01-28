@@ -5,6 +5,7 @@ import {
   applyColorToStatus,
   applyColorToRelevance
 } from '@/lib/colorMappings';
+import { DuplicatePreventionService } from '@/services/duplicatePreventionService';
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -289,47 +290,81 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Check for existing leads by phone number to prevent duplicates
-    const phoneNumbers = leads.map(lead => lead.phone);
-    const { data: existingLeads } = await supabase
-      .from('leads')
-      .select('phone')
-      .in('phone', phoneNumbers);
+    // Use DuplicatePreventionService for each lead
+    const duplicateService = new DuplicatePreventionService();
+    const importResults = {
+      imported: 0,
+      duplicates: 0,
+      failed: 0,
+      duplicateDetails: [] as any[]
+    };
 
-    const existingPhones = new Set(existingLeads?.map(lead => lead.phone) || []);
+    for (const lead of leads) {
+      try {
+        const result = await duplicateService.createLeadSafely(
+          {
+            lead_name: lead.lead_name,
+            phone: lead.phone,
+            email: lead.email
+          },
+          lead.source,
+          'csv_import'
+        );
 
-    // Filter out leads that already exist
-    const newLeads = leads.filter(lead => !existingPhones.has(lead.phone));
-    const duplicateCount = leads.length - newLeads.length;
+        if (result.success) {
+          importResults.imported++;
 
-    if (newLeads.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: `כל הלידים (${duplicateCount}) כבר קיימים במערכת`,
-        imported: 0,
-        total: leads.length,
-        duplicates: duplicateCount
-      });
+          // Update additional fields if lead was created
+          if (result.lead) {
+            const updates: any = {};
+            if (lead.status) updates.status = lead.status;
+            if (lead.relevance_status) updates.relevance_status = lead.relevance_status;
+            if (lead.assigned_agent_id) updates.assigned_agent_id = lead.assigned_agent_id;
+            if (lead.meeting_date) updates.meeting_date = lead.meeting_date;
+            if (lead.agent_notes) updates.agent_notes = lead.agent_notes;
+            if (lead.color_code) updates.color_code = lead.color_code;
+
+            if (Object.keys(updates).length > 0) {
+              await supabase
+                .from('leads')
+                .update(updates)
+                .eq('id', result.lead.id);
+            }
+          }
+        } else if (result.duplicate) {
+          importResults.duplicates++;
+          importResults.duplicateDetails.push({
+            name: lead.lead_name,
+            phone: lead.phone,
+            reason: result.reason
+          });
+        } else {
+          importResults.failed++;
+          errors.push(`Failed to import ${lead.lead_name}: ${result.error}`);
+        }
+      } catch (error) {
+        importResults.failed++;
+        errors.push(`Error importing ${lead.lead_name}: ${error}`);
+      }
     }
 
-    // Insert only new leads into database
-    const { data: insertedLeads, error: insertError } = await supabase
-      .from('leads')
-      .insert(newLeads)
-      .select();
-
-    if (insertError) {
+    if (importResults.imported === 0 && importResults.duplicates > 0) {
       return NextResponse.json({
-        error: 'Database error',
-        details: insertError.message
-      }, { status: 500 });
+        success: false,
+        error: `כל הלידים (${importResults.duplicates}) כבר קיימים במערכת`,
+        imported: 0,
+        total: leads.length,
+        duplicates: importResults.duplicates,
+        duplicateDetails: importResults.duplicateDetails.slice(0, 5) // Show first 5 duplicates
+      });
     }
 
     return NextResponse.json({
       success: true,
-      imported: insertedLeads?.length || 0,
+      imported: importResults.imported,
       total: leads.length,
-      duplicates: duplicateCount,
+      duplicates: importResults.duplicates,
+      failed: importResults.failed,
       errors: errors.length > 0 ? errors : undefined
     });
 

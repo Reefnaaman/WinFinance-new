@@ -60,22 +60,33 @@ export default function LeadEntryForm({ onLeadCreated }: LeadEntryFormProps) {
         throw new Error('כתובת אימייל לא תקינה')
       }
 
-      // Prepare lead data - ALWAYS use fresh source value
-      const leadData: LeadInsert = {
-        lead_name: formData.lead_name.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim() || null,
-        source: getDefaultSource(), // Always get fresh source, not cached
-        relevance_status: 'ממתין לבדיקה', // Always starts as pending review
-        agent_notes: formData.agent_notes.trim() || null
+      // Use the new API endpoint with duplicate prevention
+      const response = await fetch('/api/leads/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lead_name: formData.lead_name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim() || null,
+          source: getDefaultSource(),
+          agent_notes: formData.agent_notes.trim() || null
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (result.duplicate) {
+          throw new Error(result.message || 'ליד זה כבר קיים במערכת')
+        }
+        throw new Error(result.error || 'שגיאה ביצירת הליד')
       }
 
-      // Insert to database
-      const { error: insertError } = await (supabase
-        .from('leads') as any)
-        .insert([leadData])
-
-      if (insertError) throw insertError
+      if (!result.success) {
+        throw new Error(result.error || 'שגיאה ביצירת הליד')
+      }
 
       // Success!
       setSuccess(true)
