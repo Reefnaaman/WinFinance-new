@@ -17,6 +17,29 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseClient()
 
+    // TRACK WHO'S CALLING THIS ENDPOINT
+    const caller = {
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      referer: request.headers.get('referer') || 'none',
+      origin: request.headers.get('origin') || 'none',
+      host: request.headers.get('host') || 'unknown',
+      timestamp: new Date().toISOString()
+    }
+
+    console.log('🔍 CHECK-GMAIL CALLED BY:', JSON.stringify(caller, null, 2))
+
+    // Log the caller to database for analysis
+    await supabase
+      .from('email_logs')
+      .insert({
+        email_from: 'API_CALLER_TRACKING',
+        email_subject: `check-gmail called from ${caller.ip}`,
+        processed_at: new Date().toISOString(),
+        lead_created: false,
+        raw_content: JSON.stringify(caller)
+      })
+
     // For now, allow all requests since this is only called from admin panel or webhook
     // The admin panel itself requires authentication to access
     const body = await request.json().catch(() => ({}))
