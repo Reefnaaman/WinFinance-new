@@ -62,19 +62,21 @@ export class DuplicatePreventionService {
       }
     }
 
-    // 3. TIME-BASED check: Same name within last hour (prevents rapid duplicates)
+    // 3. TIME-BASED check: Same name + same phone within last hour (prevents rapid duplicates)
+    // FIXED: Only block if BOTH name AND phone match (not just name)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: recentNameMatches } = await this.supabase
       .from('leads')
       .select('id, lead_name, phone, email, source, created_at')
       .ilike('lead_name', normalizedName)
+      .eq('phone', phone) // ADD THIS: Must match phone too!
       .gte('created_at', oneHourAgo);
 
     if (recentNameMatches && recentNameMatches.length > 0) {
       return {
         isDuplicate: true,
         existingLead: recentNameMatches[0],
-        reason: 'same_name_within_hour'
+        reason: 'same_name_and_phone_within_hour'
       };
     }
 

@@ -305,7 +305,7 @@ export async function POST(request: NextRequest) {
           {
             lead_name: lead.lead_name,
             phone: lead.phone,
-            email: lead.email
+            email: lead.email || undefined  // Convert null to undefined
           },
           lead.source,
           'csv_import'

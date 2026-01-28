@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       {
         lead_name: body.lead_name.trim(),
         phone: body.phone.trim(),
-        email: body.email?.trim() || undefined
+        email: body.email?.trim() || undefined  // Already correct
       },
       body.source || 'manual',
       'manual_entry'
@@ -89,7 +89,8 @@ function getHebrewDuplicateMessage(reason: string): string {
     case 'name_and_similar_phone':
       return 'ליד עם שם ומספר טלפון דומה כבר קיים במערכת'
     case 'same_name_within_hour':
-      return 'ליד עם שם זה נוצר בשעה האחרונה - ייתכן שמדובר בכפילות'
+    case 'same_name_and_phone_within_hour':
+      return 'ליד זהה נוצר בשעה האחרונה - ייתכן שמדובר בכפילות'
     case 'exact_email_match':
       return 'ליד עם כתובת אימייל זו כבר קיים במערכת'
     default:

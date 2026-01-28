@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       {
         lead_name: leadData.lead_name,
         phone: leadData.phone,
-        email: leadData.email
+        email: leadData.email || undefined  // Convert null/empty to undefined
       },
       leadData.source || 'Other',
       'webhook'
