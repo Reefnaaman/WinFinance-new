@@ -1,6 +1,7 @@
 import Imap from 'imap'
 import { simpleParser } from 'mailparser'
 import { createClient } from '@supabase/supabase-js'
+import { DuplicatePreventionService } from './duplicatePreventionService'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -139,7 +140,26 @@ export class EmailMonitor {
 
   private async createLeadFromParsedData(parsedLead: ParsedLead, originalEmail: any): Promise<string | null> {
     try {
-      const supabase = getSupabaseClient()
+      // Use DuplicatePreventionService to check and create lead safely
+      const duplicateService = new DuplicatePreventionService()
+
+      const leadData = {
+        lead_name: parsedLead.lead_name,
+        phone: parsedLead.phone,
+        email: originalEmail.from?.value?.[0]?.address || undefined
+      }
+
+      // Check for duplicates first
+      const duplicateCheck = await duplicateService.isDuplicate(leadData)
+
+      if (duplicateCheck.isDuplicate) {
+        console.log(`⚠️ Duplicate detected via EmailMonitor: ${parsedLead.lead_name} (${parsedLead.phone})`)
+        console.log(`   Reason: ${duplicateCheck.reason}`)
+        console.log(`   Existing lead ID: ${duplicateCheck.existingLead?.id}`)
+        // Return the existing lead ID so it gets logged as processed
+        return duplicateCheck.existingLead?.id || null
+      }
+
       const notes = []
 
       if (parsedLead.campaign) {
@@ -158,29 +178,31 @@ export class EmailMonitor {
         notes.push(parsedLead.notes)
       }
 
-      const { data, error } = await supabase
-        .from('leads')
-        .insert([{
-          lead_name: parsedLead.lead_name,
-          phone: parsedLead.phone,
-          email: originalEmail.from?.value?.[0]?.address || null,
-          source: 'Email',
-          relevance_status: 'ממתין לבדיקה',
-          agent_notes: notes.length > 0 ? notes.join('\n') : null,
-          email_processed: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-        .select()
-        .single()
+      // Create the lead using duplicate prevention service
+      const result = await duplicateService.createLeadSafely(
+        leadData,
+        'Email',  // uppercase for consistency with existing data
+        'email_monitor'
+      )
 
-      if (error) {
-        console.error('Error creating lead:', error)
-        return null
+      if (result.success && result.lead) {
+        // Update with additional notes if any
+        if (notes.length > 0) {
+          const supabase = getSupabaseClient()
+          await supabase
+            .from('leads')
+            .update({
+              agent_notes: notes.join('\n'),
+              email_processed: true
+            })
+            .eq('id', result.lead.id)
+        }
+
+        console.log(`✅ Created lead: ${parsedLead.lead_name} (${parsedLead.phone})`)
+        return result.lead.id
       }
 
-      console.log(`✅ Created lead: ${parsedLead.lead_name} (${parsedLead.phone})`)
-      return data.id
+      return null
     } catch (error) {
       console.error('Error creating lead from parsed data:', error)
       return null
@@ -190,7 +212,7 @@ export class EmailMonitor {
   private async logEmailProcessing(messageId: string, senderEmail: string, subject: string, status: 'success' | 'failed' | 'skipped', leadId?: string, errorMessage?: string): Promise<void> {
     try {
       const supabase = getSupabaseClient()
-      await supabase
+      const { data, error } = await supabase
         .from('email_processing_log')
         .insert([{
           email_message_id: messageId,
@@ -201,8 +223,18 @@ export class EmailMonitor {
           error_message: errorMessage || null,
           processed_at: new Date().toISOString()
         }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('❌ Failed to log email processing:', error.message)
+        console.error('Details:', { messageId, senderEmail, subject, status })
+        // Don't throw - we still want to process the email even if logging fails
+      } else {
+        console.log('✅ Email processing logged successfully:', messageId)
+      }
     } catch (error) {
-      console.error('Error logging email processing:', error)
+      console.error('Error in logEmailProcessing:', error)
     }
   }
 
