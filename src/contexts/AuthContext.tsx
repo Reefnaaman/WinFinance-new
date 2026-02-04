@@ -31,136 +31,144 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    // Check for existing session on mount
-    console.log('AuthContext: Checking for existing session...')
-    checkUser()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
-      if (event === 'SIGNED_IN' && session?.user?.email) {
-        await fetchUserData(session.user.email) // fetchUserData now handles setLoading
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const checkUser = async () => {
-    try {
-      console.log('Fetching session...')
-      const { data: { session }, error } = await supabase.auth.getSession()
-      console.log('Session result:', session, 'Error:', error)
-
-      if (session?.user?.email) {
-        console.log('Session found, fetching user data for:', session.user.email)
-        await fetchUserData(session.user.email)
-        // Don't set loading false here since fetchUserData handles it
-      } else {
-        // No session, so no user logged in
-        console.log('No session found, user not logged in')
-        setUser(null)
-        setLoading(false) // Only set loading false here if no session
-      }
-    } catch (error) {
-      console.error('Error checking user:', error)
-      setUser(null)
-      setLoading(false) // Set loading false on error
-    }
-  }
+  // Cache to prevent fetching same user multiple times
+  const userCacheRef = React.useRef<{ email: string; user: Agent | null } | null>(null)
 
   const fetchUserData = async (email: string) => {
     try {
-      console.log('Fetching user data for email:', email)
-      console.log('Attempting database query...')
-
-      // Add timeout promise to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
-      })
-
-      // Fetch from the database with proper retry logic
-      let retries = 3
-      let lastError = null
-
-      while (retries > 0) {
-        try {
-          console.log(`Query attempt ${4 - retries}/3`)
-
-          const queryPromise = supabase
-            .from('agents')
-            .select('*')
-            .eq('email', email)
-            .single()
-
-          const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
-
-          if (data && !error) {
-            console.log('Agent query successful:', { data, email })
-            console.log('Setting user:', data)
-            setUser(data)
-            setLoading(false)
-            return
-          }
-
-          if (error) {
-            lastError = error
-            console.log(`Query attempt failed (${4 - retries}/3):`, error.message)
-            retries--
-
-            if (retries > 0) {
-              // Wait before retry with exponential backoff
-              await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
-            }
-          }
-        } catch (err: any) {
-          lastError = err
-          console.log(`Query attempt error (${4 - retries}/3):`, err.message)
-          retries--
-          if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
-          }
-        }
+      // Check cache first
+      if (userCacheRef.current?.email === email.toLowerCase()) {
+        console.log('Using cached user data for:', email)
+        setUser(userCacheRef.current.user)
+        setLoading(false)
+        return
       }
 
-      // All retries failed
-      if (lastError) {
-        console.error('Error fetching user data after retries:', lastError)
+      console.log('Fetching user data for email:', email)
 
-        // Try with case-insensitive search as last resort
-        try {
-          const { data: ciData, error: ciError } = await supabase
-            .from('agents')
-            .select('*')
-            .ilike('email', email)
-            .single()
+      // Simple, direct query with lowercase email
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single()
 
-          if (ciData && !ciError) {
-            console.log('Setting user (case-insensitive match):', ciData)
-            setUser(ciData)
-            setLoading(false)
-            return
-          }
-        } catch (e) {
-          console.error('Case-insensitive search also failed:', e)
-        }
-
-        // No agent found - user needs to be added to the system
+      if (error) {
+        console.error('Database error:', error.message)
+        setUser(null)
+        userCacheRef.current = { email: email.toLowerCase(), user: null }
+      } else if (data) {
+        console.log('Agent found:', (data as Agent).name)
+        setUser(data as Agent)
+        userCacheRef.current = { email: email.toLowerCase(), user: data as Agent }
+      } else {
         console.error('No agent found for email:', email)
         setUser(null)
-        setLoading(false)
+        userCacheRef.current = { email: email.toLowerCase(), user: null }
       }
     } catch (error) {
       console.error('Error in fetchUserData:', error)
-      // Don't create a fallback user - let the user know there's an issue
       setUser(null)
+      userCacheRef.current = { email: email.toLowerCase(), user: null }
+    } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    let mounted = true;
+    let authListenerInitialized = false;
+
+    // Check for existing session on mount
+    console.log('AuthContext: Checking for existing session...')
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (!mounted) return; // Prevent state updates if component unmounted
+
+        if (error) {
+          console.error('Session error:', error)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+
+        if (session?.user?.email) {
+          console.log('Session found, checking cache for:', session.user.email)
+          // Check cache first to avoid duplicate fetches
+          if (userCacheRef.current?.email === session.user.email.toLowerCase()) {
+            console.log('Using cached user data from init')
+            setUser(userCacheRef.current.user)
+            setLoading(false)
+          } else {
+            console.log('No cache found, fetching user data for:', session.user.email)
+            await fetchUserData(session.user.email)
+          }
+        } else {
+          console.log('No session found, user not logged in')
+          setUser(null)
+          setLoading(false)
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error('Error initializing auth:', error)
+          setUser(null)
+          setLoading(false)
+        }
+      } finally {
+        authListenerInitialized = true;
+      }
+    }
+
+    initializeAuth()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email, 'mounted:', mounted, 'initialized:', authListenerInitialized)
+
+      if (!mounted || !authListenerInitialized) {
+        console.log('Skipping auth state change - component not ready')
+        return
+      }
+
+      try {
+        if (event === 'SIGNED_OUT') {
+          console.log('User signed out, clearing state')
+          userCacheRef.current = null // Clear cache on sign out
+          setUser(null)
+          setLoading(false)
+        } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user?.email) {
+          // For sign in or initial session events, fetch user data only if we don't have it cached
+          console.log(`User ${event.toLowerCase()}, checking cache...`)
+          if (!userCacheRef.current || userCacheRef.current.email !== session.user.email.toLowerCase()) {
+            setLoading(true)
+            await fetchUserData(session.user.email)
+          } else {
+            console.log(`Using cached user data after ${event.toLowerCase()}`)
+            setUser(userCacheRef.current.user) // Ensure state is set from cache
+            setLoading(false)
+          }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Session refreshed, maintain current state - NO fetching needed
+          console.log('Token refreshed, maintaining current user state:', user?.email)
+          // Only fetch if we truly have no user data
+          if (!user && !userCacheRef.current && session?.user?.email) {
+            console.log('Token refreshed but no user in state or cache, fetching...')
+            await fetchUserData(session.user.email)
+          }
+        }
+      } catch (error) {
+        console.error('Error handling auth state change:', error)
+      }
+    })
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe()
+    }
+  }, []) // Empty dependency array to avoid re-running
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -185,10 +193,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      setLoading(true)
       await supabase.auth.signOut()
+      userCacheRef.current = null // Clear cache on logout
       setUser(null)
+      setLoading(false)
     } catch (error) {
       console.error('Error signing out:', error)
+      userCacheRef.current = null // Clear cache even on error
+      setUser(null)
+      setLoading(false)
     }
   }
 

@@ -16,14 +16,31 @@ import Image from 'next/image';
 
 export default function FullDashboard() {
   const { user, loading: authLoading, logout, canCreateLeads, canViewAllLeads } = useAuth();
-  const [currentPage, setCurrentPage] = useState('home');
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Initialize currentPage from sessionStorage or default to 'home'
+  const [currentPage, setCurrentPageState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('winfinance-current-page') || 'home';
+    }
+    return 'home';
+  });
+
+  // Wrapper function to update both state and sessionStorage
+  const setCurrentPage = (page: string) => {
+    setCurrentPageState(page);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('winfinance-current-page', page);
+    }
+  };
+
   const [activeAgent, setActiveAgent] = useState('all');
   const [activeStatus, setActiveStatus] = useState('all');
   const [activeSource, setActiveSource] = useState('all');
   const [activeRelevance, setActiveRelevance] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState('month');
+  const [timeRange, setTimeRange] = useState('current_month');
   const [customDateRange, setCustomDateRange] = useState<DateRange>({
     startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
     endDate: new Date()
@@ -94,13 +111,18 @@ export default function FullDashboard() {
     }
   };
 
+  // Hydration effect
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   // useEffect MUST be before any conditional returns
   // Only fetch data once auth is complete and user is available
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user && !authLoading && isHydrated) {
       fetchData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isHydrated]);
 
   // Set default page and sorting based on role
   // Only set initial page on first mount, not on every user update
@@ -110,10 +132,11 @@ export default function FullDashboard() {
     // Only set initial page once when user is first loaded
     // This prevents unwanted redirects after authentication
     if (user.role === 'agent') {
+      // Agents should go directly to the leads page where they can edit
+      setCurrentPage('leads');
       // Set default sorting for agents (most recent first)
       setSortBy('date');
       setSortOrder('desc');
-      // Don't force navigate to leads page - let user stay on their current page
     } else if (user.role === 'lead_supplier') {
       // Lead suppliers should start on their dashboard
       // Only set if current page is still 'home' (initial state)
@@ -124,8 +147,8 @@ export default function FullDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]); // Only run when user ID changes (login/logout), not on every user object update
 
-  // Show loading screen while checking authentication
-  if (authLoading) {
+  // Show loading screen while checking authentication or during hydration
+  if (authLoading || !isHydrated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white flex items-center justify-center" dir="rtl">
         <div className="text-center">
@@ -144,8 +167,8 @@ export default function FullDashboard() {
   // Dynamic sources - includes lead providers
   const leadProviders = dbAgents.filter(agent => agent.role === 'lead_supplier');
   const sources = [
-    { id: 'Email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
-    { id: 'Excel Import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
+    { id: 'email', label: 'אימייל', icon: 'Mail', color: 'bg-blue-500', lightBg: 'bg-blue-50', text: 'text-blue-700' },
+    { id: 'excel_import', label: 'יבוא אקסל', icon: 'FileSpreadsheet', color: 'bg-green-500', lightBg: 'bg-green-50', text: 'text-green-700' },
     ...leadProviders.map((provider, index) => ({
       id: provider.name,
       label: provider.name,
@@ -154,9 +177,17 @@ export default function FullDashboard() {
       lightBg: ['bg-emerald-50', 'bg-teal-50', 'bg-green-50', 'bg-cyan-50'][index % 4],
       text: ['text-emerald-700', 'text-teal-700', 'text-green-700', 'text-cyan-700'][index % 4]
     })),
-    { id: 'Manual', label: 'ידני', icon: 'Edit', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
-    { id: 'Other', label: 'אחר', icon: 'MoreHorizontal', color: 'bg-slate-500', lightBg: 'bg-slate-50', text: 'text-slate-700' },
+    { id: 'manual', label: 'ידני', icon: 'Edit', color: 'bg-purple-500', lightBg: 'bg-purple-50', text: 'text-purple-700' },
+    { id: 'other', label: 'אחר', icon: 'MoreHorizontal', color: 'bg-slate-500', lightBg: 'bg-slate-50', text: 'text-slate-700' },
   ];
+
+  // Legacy source mapping for backward compatibility
+  const legacySourceMap: Record<string, string> = {
+    'Email': 'email',
+    'Excel Import': 'excel_import',
+    'Manual': 'manual',
+    'Other': 'other'
+  };
 
   // Status definitions - all 7 statuses from database
   const agentStatuses = [
@@ -177,7 +208,7 @@ export default function FullDashboard() {
   ];
 
   // Calculate analytics for dashboard pages
-  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders);
+  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders, customDateRange);
 
   // Calculate filter counts for real-time badges
   const filterCounts = {
@@ -204,9 +235,12 @@ export default function FullDashboard() {
     filterCounts.statuses[status.id] = dbLeads.filter(lead => lead.status === status.id).length;
   });
 
-  // Count leads per source
+  // Count leads per source (including legacy mappings)
   sources.forEach(source => {
-    filterCounts.sources[source.id] = dbLeads.filter(lead => lead.source === source.id).length;
+    filterCounts.sources[source.id] = dbLeads.filter(lead =>
+      lead.source === source.id ||
+      legacySourceMap[lead.source] === source.id
+    ).length;
   });
 
   // Count leads per relevance status
@@ -216,10 +250,8 @@ export default function FullDashboard() {
 
   const filteredLeads = dbLeads.filter(lead => {
     // Role-based filtering: agents only see their assigned leads
-    if (user?.role === 'agent') {
-      const matches = lead.assigned_agent_id === user.id;
-      // Remove debug logging that's flooding console
-      return matches;
+    if (user?.role === 'agent' && lead.assigned_agent_id !== user.id) {
+      return false;
     }
 
     // Lead suppliers only see leads they created
@@ -249,14 +281,16 @@ export default function FullDashboard() {
       }
     }
 
-    // Agent filtering
-    const matchesAgent = activeAgent === 'all' || lead.assigned_agent_id === activeAgent;
+    // Agent filtering (only apply for non-agent users, since agents already filtered above)
+    const matchesAgent = user?.role === 'agent' || activeAgent === 'all' || lead.assigned_agent_id === activeAgent;
 
     // Status filtering
     const matchesStatus = activeStatus === 'all' || lead.status === activeStatus;
 
-    // Source filtering
-    const matchesSource = activeSource === 'all' || lead.source === activeSource;
+    // Source filtering with legacy compatibility
+    const matchesSource = activeSource === 'all' ||
+                          lead.source === activeSource ||
+                          (legacySourceMap[lead.source] === activeSource);
 
     // Relevance filtering
     const matchesRelevance = activeRelevance === 'all' || lead.relevance_status === activeRelevance;
@@ -424,15 +458,7 @@ export default function FullDashboard() {
               </div>
               <p className="text-sm font-medium text-slate-700">{user.name}</p>
               <button
-                onClick={async () => {
-                  try {
-                    await logout();
-                    // Force a page reload to ensure clean state
-                    window.location.href = '/';
-                  } catch (error) {
-                    console.error('Logout failed:', error);
-                  }
-                }}
+                onClick={logout}
                 className="ml-2 px-3 py-1.5 text-sm text-slate-800 bg-red-500/30 hover:text-slate-900 hover:bg-red-500/40 rounded-lg transition-colors"
               >
                 יציאה
@@ -473,11 +499,13 @@ export default function FullDashboard() {
       <main className="max-w-none mx-auto px-2 sm:px-4 py-6 md:py-8">
         {currentPage === 'home' && (
           <HomePage
-            dbLeads={filteredLeads}
+            dbLeads={dbLeads}  // Pass ALL leads, not filtered leads, so analytics can be calculated properly
             dbAgents={dbAgents}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
             currentUser={user}
+            customDateRange={customDateRange}
+            onCustomDateRangeChange={setCustomDateRange}
             loading={loading}
           />
         )}

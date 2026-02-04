@@ -49,14 +49,7 @@ export default function SupplierStatsBar({ stats }: SupplierStatsBarProps) {
       bgColor: 'bg-red-50',
       textColor: 'text-red-700'
     },
-    {
-      title: 'הכנסות',
-      value: `₪${stats.totalRevenue.toLocaleString('he-IL')}`,
-      icon: Coins,
-      color: 'from-amber-500 to-amber-600',
-      bgColor: 'bg-amber-50',
-      textColor: 'text-amber-700'
-    },
+    // Revenue stat removed - suppliers should not see income data
     {
       title: 'אחוז הצלחה',
       value: `${stats.successRate.toFixed(1)}%`,
@@ -68,7 +61,7 @@ export default function SupplierStatsBar({ stats }: SupplierStatsBarProps) {
   ];
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
       {statCards.map((card, index) => (
         <div
           key={card.title}

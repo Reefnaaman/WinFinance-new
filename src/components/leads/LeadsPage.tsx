@@ -140,7 +140,15 @@ export default function LeadsPage({
     if (!editingField) return;
 
     try {
-      await updateLeadField(editingField.leadId, editingField.field as any, editingValue);
+      // Convert price to number if editing price field
+      let valueToSave = editingValue;
+      if (editingField.field === 'price') {
+        // Remove any non-numeric characters except decimal point
+        const cleanedValue = editingValue.replace(/[^\d.]/g, '');
+        valueToSave = cleanedValue ? parseFloat(cleanedValue).toString() : '0';
+      }
+
+      await updateLeadField(editingField.leadId, editingField.field as any, valueToSave);
       setEditingField(null);
       setEditingValue('');
       await fetchData();
@@ -291,6 +299,7 @@ export default function LeadsPage({
           filterCounts={filterCounts}
           className="mb-4 md:mb-6"
           totalLeads={filteredLeads.length}
+          userRole={user?.role}
         >
           <ActionButtons
             fetchData={fetchData}
@@ -362,7 +371,7 @@ export default function LeadsPage({
                 </div>
                 <div className="col-span-1">
                   <SortableHeader
-                    label="רלוונטיות"
+                    label="סטטוס מתאמת"
                     field="relevance"
                     currentSort={sortBy}
                     currentOrder={sortOrder}
@@ -612,13 +621,22 @@ export default function LeadsPage({
                             </div>
 
                             {/* Status Badge - Center */}
-                            <div className="flex justify-center">
+                            <div className="flex flex-col items-center gap-1">
                               {status ? (
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status.lightBg} ${status.text}`}>
                                   {status.label}
                                 </span>
                               ) : (
                                 <span className="text-xs text-slate-400">אין סטטוס</span>
+                              )}
+                              {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                <div className="text-xs text-gray-500">
+                                  עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
                               )}
                             </div>
 
@@ -685,7 +703,7 @@ export default function LeadsPage({
                               {/* Relevancy Selector - Only for coordinators/admin */}
                               {(user?.role === 'coordinator' || user?.role === 'admin') ? (
                                 <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">רלוונטיות</label>
+                                  <label className="text-xs text-slate-500 mb-1 block">סטטוס מתאמת</label>
                                   <ModernSelector
                                     value={lead.relevance_status}
                                     onChange={(value) => handleUpdateLeadField(lead.id, 'relevance_status', value)}
@@ -702,7 +720,7 @@ export default function LeadsPage({
                                 </div>
                               ) : (
                                 <div>
-                                  <label className="text-xs text-slate-500 mb-1 block">רלוונטיות</label>
+                                  <label className="text-xs text-slate-500 mb-1 block">סטטוס מתאמת</label>
                                   <div className="py-1">
                                     {
                                       (() => {
@@ -789,16 +807,21 @@ export default function LeadsPage({
                                 <label className="text-xs text-slate-500 mb-1 block">מחיר</label>
                                 {editingField?.leadId === lead.id && editingField?.field === 'price' ? (
                                   <input
-                                    type="text"
+                                    type="number"
                                     value={editingValue}
                                     onChange={(e) => setEditingValue(e.target.value)}
                                     onBlur={saveEdit}
                                     onKeyDown={(e) => {
-                                      if (e.key === 'Enter') saveEdit();
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        saveEdit();
+                                      }
                                       if (e.key === 'Escape') cancelEdit();
                                     }}
                                     className="w-full px-2 py-1.5 border border-blue-400 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm text-center bg-white"
                                     placeholder="0"
+                                    min="0"
+                                    step="1"
                                     autoFocus
                                   />
                                 ) : (
@@ -950,10 +973,10 @@ export default function LeadsPage({
                                       </h3>
                                       <p className="text-xs text-slate-500">
                                         נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit'
-                                })}
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: '2-digit'
+                                        })}
                                       </p>
                                     </div>
                                   )}
@@ -1011,6 +1034,15 @@ export default function LeadsPage({
                                 placeholder="בחר סטטוס"
                                 compact
                               />
+                              {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                <div className="text-xs text-gray-500 mt-1 text-center">
+                                  עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
+                              )}
                             </div>
 
                             {/* Meeting Date */}
@@ -1025,16 +1057,21 @@ export default function LeadsPage({
                             <div className="col-span-1 flex items-center justify-center">
                               {editingField?.leadId === lead.id && editingField?.field === 'price' ? (
                                 <input
-                                  type="text"
+                                  type="number"
                                   value={editingValue}
                                   onChange={(e) => setEditingValue(e.target.value)}
                                   onBlur={saveEdit}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      saveEdit();
+                                    }
                                     if (e.key === 'Escape') cancelEdit();
                                   }}
                                   className="w-20 px-2 py-1 bg-white border border-blue-400 rounded text-xs text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                   placeholder="0"
+                                  min="0"
+                                  step="1"
                                   autoFocus
                                 />
                               ) : (
@@ -1135,10 +1172,10 @@ export default function LeadsPage({
                                       </h3>
                                       <p className="text-xs text-slate-500">
                                         נוצר {new Date(lead.created_at).toLocaleDateString('he-IL', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit'
-                                })}
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: '2-digit'
+                                        })}
                                       </p>
                                     </div>
                                   )}
@@ -1212,7 +1249,7 @@ export default function LeadsPage({
                                     text: r.text,
                                     icon: r.icon
                                   }))}
-                                  placeholder="בחר רלוונטיות"
+                                  placeholder="בחר סטטוס מתאמת"
                                   compact
                                 />
                               ) : (
@@ -1240,6 +1277,15 @@ export default function LeadsPage({
                                 placeholder="בחר סטטוס"
                                 compact
                               />
+                              {lead.updated_at && new Date(lead.updated_at).getTime() > new Date(lead.created_at).getTime() + 60000 && (
+                                <div className="text-xs text-gray-500 mt-1 text-center">
+                                  עודכן {new Date(lead.updated_at).toLocaleDateString('he-IL', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: '2-digit'
+                                  })}
+                                </div>
+                              )}
                             </div>
 
                             {/* Agent */}
@@ -1287,16 +1333,21 @@ export default function LeadsPage({
                             <div className="col-span-1 flex items-center justify-center">
                               {editingField?.leadId === lead.id && editingField?.field === 'price' ? (
                                 <input
-                                  type="text"
+                                  type="number"
                                   value={editingValue}
                                   onChange={(e) => setEditingValue(e.target.value)}
                                   onBlur={saveEdit}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      saveEdit();
+                                    }
                                     if (e.key === 'Escape') cancelEdit();
                                   }}
                                   className="w-20 px-2 py-1 bg-white border border-blue-400 rounded text-xs text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                   placeholder="0"
+                                  min="0"
+                                  step="1"
                                   autoFocus
                                 />
                               ) : (

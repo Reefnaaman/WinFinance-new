@@ -25,7 +25,7 @@ export interface AgentFilterProps {
   /** Lead counts per agent (if showCounts is true) */
   leadCounts?: Record<string, number>;
   /** Dropdown width variant */
-  width?: 'sm' | 'md' | 'lg' | 'full';
+  width?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 // ============================================================================
@@ -91,7 +91,7 @@ export default function AgentFilter({
       className={className}
       showCounts={showCounts}
       allowClear={true}
-      width={width}
+      width="lg"
     />
   );
 }

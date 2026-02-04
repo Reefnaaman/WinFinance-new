@@ -1,0 +1,97 @@
+[
+  {
+    "phone": "0528546984",
+    "name": "דלית",
+    "kept_id": "8d57af4e-ddb3-41a8-a9ee-5ed70a3dca4d",
+    "kept_date": "2026-01-09T14:07:45.848+00:00",
+    "deleted_count": 1,
+    "deleted_ids": [
+      "f10e03e7-d11b-450f-8c13-c2257cb36183"
+    ]
+  },
+  {
+    "phone": "0502238634",
+    "name": "עומרי בוקרה",
+    "kept_id": "47b6c181-3c75-4532-b62b-cf6626c36496",
+    "kept_date": "2026-01-09T14:07:45.848+00:00",
+    "deleted_count": 1,
+    "deleted_ids": [
+      "4b72e43b-26b6-44a3-81ce-1c3dea603316"
+    ]
+  },
+  {
+    "phone": "0532782688",
+    "name": "דניאל מלכה",
+    "kept_id": "e8fc027a-070e-4d36-8f1b-8f1b3803447b",
+    "kept_date": "2026-01-09T14:07:45.848+00:00",
+    "deleted_count": 1,
+    "deleted_ids": [
+      "a598d362-7a46-4e21-ba1f-4ae53eae4cd0"
+    ]
+  },
+  {
+    "phone": "0507727982",
+    "name": "מורן חסון",
+    "kept_id": "348bcc08-c383-4560-b085-ac60c7a6e117",
+    "kept_date": "2026-01-26T13:09:11.25+00:00",
+    "deleted_count": 56,
+    "deleted_ids": [
+      "a029982e-e5f0-4305-8d45-fb024fb76c31",
+      "1b9c2163-05e9-41ff-baec-cfddfe726c40",
+      "bd762e3a-daf5-49f8-b77b-f875ce96091f",
+      "3af9eb77-c698-4b6e-934f-597763333a74",
+      "e3b7f8b8-ed54-4815-8fd1-d3abc8c69584",
+      "492f3236-5cc1-40dc-8163-9e12d984e70c",
+      "bd29b740-d276-4bce-bf81-e7eb9f7f49ec",
+      "2f2969b4-ec37-461a-a12a-49c251121631",
+      "c62cff50-9808-4b4a-949c-315725730e07",
+      "720b82ef-82ca-4de4-b93d-33de08189ba1",
+      "9e99f361-1da2-4167-be1d-0c3579bf1d62",
+      "922f47b9-974b-4632-b8e0-af5df38589b0",
+      "166720f9-f400-42c4-989f-96bd25e9b15b",
+      "d835876e-2217-4ba4-bd91-aa9c75d064aa",
+      "35ba1af0-db53-490e-b011-4ce2f5056bb6",
+      "aa5f9c12-9187-4f2b-8e13-7a04efcab639",
+      "30954961-c71e-426b-b256-0dfbc85a5d28",
+      "241c85f4-8265-46a5-906e-f2ab0003b416",
+      "96ab90b8-b6c1-44d2-b780-a36e883a34ad",
+      "ebb69c0e-b6c2-4b94-b0b9-bbf6d3024f08",
+      "87f87f53-dac6-4295-a4a0-987a4c26badf",
+      "b1ae17de-6eec-4abf-85fc-850ad99a8707",
+      "4e708f5e-4721-48de-9cbc-a3dac5de7792",
+      "6f9eef57-a0d2-42e2-87e2-1d50604549a7",
+      "6ad676df-35fc-486c-b8a4-d070e520aa91",
+      "7751cfa8-39c9-4f9f-b80d-52318d4a605d",
+      "7ff4d75d-c54e-4142-96a1-e163fc58da1d",
+      "984672fe-2fe5-4a1a-8f0e-4c5ba83662a4",
+      "16b61475-859a-4558-89bd-25f406708af1",
+      "1d27fa29-3bdb-4f31-93b5-2e478967e275",
+      "b2bdf896-321d-498d-8fce-1c97bd083a9e",
+      "2885bd9d-53bd-4820-8edb-58be07502741",
+      "0c03f96f-bf03-437e-9f69-bcf252259a02",
+      "2bf1f3db-b4ad-4271-8836-9bb63187917f",
+      "fcc39490-dd2f-429b-97e0-ad6043987269",
+      "84416a55-6979-4b6b-b2af-9dab5ec16f79",
+      "b026b39f-8df0-4a8a-b1d6-201f7eb2aaf4",
+      "bb13804b-fdbd-431e-ab62-81de668e2dca",
+      "6f0e450d-611a-450c-b2f5-c251b6a2f68d",
+      "9325cca0-bb7c-4269-aa32-1e72e960cfdb",
+      "2b9235b6-fecc-4f7f-8296-cf6600b13fe1",
+      "1c781cb8-155e-440e-b906-3a37e75f951f",
+      "96b46498-36d3-433b-a635-edf444d5e0b1",
+      "5806eaa6-3d04-4ece-857f-a15baa8410d1",
+      "f0906187-0ca6-47c7-996d-caa9e4e72b92",
+      "798e1ef3-96a8-4bca-bedc-5f4feca6daf5",
+      "da714578-6ca2-42c1-8d2c-8c0e8adb157a",
+      "332e2f46-9121-4d7b-976c-ffef508bd6a6",
+      "38727515-9589-4e75-a2e3-d1387f738a82",
+      "98fbfc62-50a0-4f73-967c-a8ddd563b9e6",
+      "5a20598e-c509-4269-9d10-b36ccd6fee0e",
+      "c40e5d78-e400-4590-8f24-1ed492e4c6d6",
+      "35239f3c-0f27-47e9-95f7-d6071e497ff4",
+      "a7c419b3-db9f-4ba2-a8e7-5af1c5acfd78",
+      "79045032-56c7-4783-aff2-32613e308e6d",
+      "f2c9ec18-28e2-4b72-a16c-51ab24e9b554"
+    ]
+  }
+]

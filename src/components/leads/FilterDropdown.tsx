@@ -42,7 +42,7 @@ export interface FilterDropdownProps {
   /** Allow clearing/resetting filter */
   allowClear?: boolean;
   /** Dropdown width variant */
-  width?: 'sm' | 'md' | 'lg' | 'full';
+  width?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 // ============================================================================
@@ -71,7 +71,8 @@ export default function FilterDropdown({
   placeholder = "בחר...",
   label,
   showCounts = false,
-  allowClear = true
+  allowClear = true,
+  width = 'md'
 }: FilterDropdownProps) {
 
   // ============================================================================
@@ -133,12 +134,22 @@ export default function FilterDropdown({
   const displayText = selectedOption ? selectedOption.label : placeholder;
   const isAllSelected = value === 'all';
 
+  // Width variants for dropdown
+  const widthClasses = {
+    'sm': 'w-24',      // 96px - for short filters
+    'md': 'w-32',      // 128px - default
+    'lg': 'w-56',      // 224px - for longer Hebrew names
+    'xl': 'w-64',      // 256px - for very long names
+    'full': 'w-full'   // full width
+  };
+  const dropdownWidth = widthClasses[width];
+
   // ============================================================================
   // RENDER
   // ============================================================================
 
   return (
-    <div className="relative" style={{ width: '128px' }}>
+    <div className={`relative ${dropdownWidth}`}>
 
       {/* Dropdown Button */}
       <button
@@ -184,11 +195,9 @@ export default function FilterDropdown({
         <Portal triggerElement={buttonRef.current} placement="bottom-start">
           <div
             ref={dropdownRef}
-            className="bg-white border border-slate-200 rounded-lg shadow-lg overflow-visible"
+            className={`bg-white border border-slate-200 rounded-lg shadow-lg overflow-visible ${dropdownWidth}`}
             style={{
-              width: label === 'סינון לפי סטטוס' ? '220px' : '160px',
-              height: label === 'סינון לפי סטטוס' ? 'auto' : 'auto',
-              maxHeight: label === 'סינון לפי סטטוס' ? 'none' : '240px'
+              maxHeight: '240px'
             }}
           >
               {/* Clear Option */}

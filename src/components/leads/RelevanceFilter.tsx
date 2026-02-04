@@ -53,7 +53,7 @@ export interface RelevanceFilterProps {
  * - Optional lead counts per relevance status
  * - Responsive width variants
  * - RTL support
- * - "כל הרלוונטיות" (All relevance) option
+ * - "כל הסטטוסים" (All statuses) option
  *
  * @param props RelevanceFilterProps
  * @returns JSX.Element
@@ -76,7 +76,7 @@ export default function RelevanceFilter({
   const relevanceOptions: FilterOption[] = [
     {
       id: 'all',
-      label: 'כל הרלוונטיות',
+      label: 'כל הסטטוסים',
       count: showCounts && leadCounts ? leadCounts['all'] : undefined
     },
     ...relevanceStatuses.map((relevance): FilterOption => ({
@@ -106,8 +106,8 @@ export default function RelevanceFilter({
       value={value}
       onChange={handleRelevanceChange}
       options={relevanceOptions}
-      placeholder="בחר רלוונטיות"
-      label="סינון לפי רלוונטיות"
+      placeholder="בחר סטטוס מתאמת"
+      label="סינון לפי סטטוס מתאמת"
       className={className}
       width={width}
     />

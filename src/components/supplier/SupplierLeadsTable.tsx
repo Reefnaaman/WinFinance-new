@@ -71,7 +71,7 @@ export default function SupplierLeadsTable({ leads, dbAgents }: SupplierLeadsTab
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">סטטוס</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">מועד פגישה</th>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">תאריך יצירה</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">מחיר</th>
+              {/* Price column header removed - suppliers should not see income data */}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -120,16 +120,7 @@ export default function SupplierLeadsTable({ leads, dbAgents }: SupplierLeadsTab
                       <span>{formatDate(lead.created_at)}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    {lead.status === 'עסקה נסגרה' && lead.price ? (
-                      <div className="flex items-center gap-2 text-green-600 font-medium">
-                        <Banknote className="w-4 h-4" />
-                        <span>₪{Number(lead.price).toLocaleString('he-IL')}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
+                  {/* Price column removed - suppliers should not see income data */}
                 </tr>
               );
             })}
@@ -182,14 +173,7 @@ export default function SupplierLeadsTable({ leads, dbAgents }: SupplierLeadsTab
                 </div>
               </div>
 
-              {lead.status === 'עסקה נסגרה' && lead.price && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2 text-green-600 font-medium">
-                    <Banknote className="w-4 h-4" />
-                    <span>₪{Number(lead.price).toLocaleString('he-IL')}</span>
-                  </div>
-                </div>
-              )}
+              {/* Price display removed for mobile - suppliers should not see income data */}
             </div>
           );
         })}

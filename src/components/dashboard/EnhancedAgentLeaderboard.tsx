@@ -121,7 +121,7 @@ export default function EnhancedAgentLeaderboard({
             מעקב סוכנים
           </h3>
           <p className="text-xs text-gray-500">
-            דירוג לפי הכנסות
+            דירוג לפי סכום סגירות
           </p>
         </div>
         <Trophy className="w-5 h-5 text-yellow-500" />
@@ -242,7 +242,7 @@ export default function EnhancedAgentLeaderboard({
                         ? `${(agent.totalRevenue / 1000).toFixed(0)}k₪`
                         : `${agent.totalRevenue}₪`}
                     </p>
-                    <p className="text-[10px] text-gray-600">הכנסות</p>
+                    <p className="text-[10px] text-gray-600">סכום סגירות</p>
                   </div>
                 </div>
               </div>

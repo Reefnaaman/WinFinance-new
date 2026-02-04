@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Lead, Agent } from '@/lib/database.types';
 import SupplierLeadsTable from './SupplierLeadsTable';
 import SupplierLeadEntryForm from './SupplierLeadEntryForm';
+import ModernCompactStatusChart from '../dashboard/ModernCompactStatusChart';
 import { Plus, X } from 'lucide-react';
 
 interface SupplierDashboardProps {
@@ -44,9 +45,7 @@ export default function SupplierDashboard({
     const closedDeals = supplierLeads.filter(l => l.status === 'עסקה נסגרה').length;
     const failedDeals = supplierLeads.filter(l => l.status === 'התקיימה - כשלון').length;
     const scheduledMeetings = supplierLeads.filter(l => l.status === 'תואם').length;
-    const totalRevenue = supplierLeads
-      .filter(l => l.status === 'עסקה נסגרה' && l.price)
-      .reduce((sum, lead) => sum + Number(lead.price), 0);
+    // Revenue calculation removed - suppliers should not see income data
     const successRate = totalLeads > 0 ? (closedDeals / totalLeads) * 100 : 0;
 
     // Status breakdown for chart
@@ -61,7 +60,7 @@ export default function SupplierDashboard({
       closedDeals,
       failedDeals,
       scheduledMeetings,
-      totalRevenue,
+      // totalRevenue removed - suppliers should not see income data
       successRate,
       statusBreakdown
     };
@@ -90,8 +89,8 @@ export default function SupplierDashboard({
             <p className="text-xl md:text-3xl font-bold text-yellow-300">{stats.successRate.toFixed(1)}%</p>
           </div>
           <div className="bg-white/20 backdrop-blur-sm rounded-lg md:rounded-xl p-3 md:p-4">
-            <p className="text-blue-100 text-xs md:text-sm">סכום סגירת ביטוחים כולל</p>
-            <p className="text-xl md:text-3xl font-bold text-cyan-300">₪{stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-blue-100 text-xs md:text-sm">פגישות תואמו</p>
+            <p className="text-xl md:text-3xl font-bold text-cyan-300">{stats.scheduledMeetings}</p>
           </div>
         </div>
 
@@ -105,6 +104,15 @@ export default function SupplierDashboard({
             <span>נכשל: {stats.failedDeals}</span>
           </div>
         </div>
+      </div>
+
+      {/* Status Distribution Chart */}
+      <div className="animate-fade-in-up animation-delay-300">
+        <ModernCompactStatusChart
+          analyticsLeads={supplierLeads}
+          totalLeads={stats.totalLeads}
+          className="w-full"
+        />
       </div>
 
       {/* Search Bar with Action Button */}

@@ -124,7 +124,7 @@ export default function CSVExport({ currentFilters = {}, agents = [] }: CSVExpor
                 {/* Relevance Status Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    סטטוס רלוונטיות
+                    סטטוס מתאמת
                   </label>
                   <div className="flex gap-2 items-center">
                     <select
@@ -230,9 +230,12 @@ export default function CSVExport({ currentFilters = {}, agents = [] }: CSVExpor
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     >
                       <option value="">הכל</option>
-                      <option value="Email">אימייל</option>
-                      <option value="Manual">ידני</option>
-                      <option value="Other">אחר</option>
+                      <option value="email">אימייל</option>
+                      <option value="Email">אימייל (ישן)</option>
+                      <option value="manual">ידני</option>
+                      <option value="Manual">ידני (ישן)</option>
+                      <option value="other">אחר</option>
+                      <option value="Other">אחר (ישן)</option>
                     </select>
                     {exportFilters.source && (
                       <button
@@ -255,7 +258,7 @@ export default function CSVExport({ currentFilters = {}, agents = [] }: CSVExpor
                   <div className="flex flex-wrap gap-2">
                     {exportFilters.relevance_status && (
                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                        רלוונטיות: {exportFilters.relevance_status}
+                        סטטוס מתאמת: {exportFilters.relevance_status}
                       </span>
                     )}
                     {exportFilters.status && (

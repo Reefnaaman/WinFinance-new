@@ -20,7 +20,7 @@ export interface DateRange {
  * Time range option definition - Modern simplified approach
  */
 export interface TimeRangeOption {
-  id: 'current_month' | 'current_quarter' | 'current_year' | 'custom';
+  id: 'current_week' | 'current_month' | 'current_quarter' | 'current_year' | 'custom';
   label: string;
 }
 
@@ -53,6 +53,7 @@ export interface TimeRangeFilterProps {
  * Following 2024-2025 best practices - minimal and clean
  */
 export const DEFAULT_TIME_RANGES: TimeRangeOption[] = [
+  { id: 'current_week', label: 'השבוע' },
   { id: 'current_month', label: 'החודש' },
   { id: 'current_quarter', label: 'הרבעון' },
   { id: 'current_year', label: 'השנה' },

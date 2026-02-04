@@ -9,6 +9,7 @@ import { DateRange } from './DateRangePicker';
 import EnhancedAgentLeaderboard from './EnhancedAgentLeaderboard';
 import SourceEffectivenessChart from './SourceEffectivenessChart';
 import ModernCompactStatusChart from './ModernCompactStatusChart';
+import LeadsPage from '../leads/LeadsPage';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -29,6 +30,10 @@ export interface HomePageProps {
   setTimeRange: (range: string) => void;
   /** Current logged-in user */
   currentUser?: Agent | null;
+  /** Custom date range for analytics */
+  customDateRange?: DateRange;
+  /** Function to update custom date range */
+  onCustomDateRangeChange?: (dateRange: DateRange) => void;
   /** Optional CSS class name */
   className?: string;
   /** Data is still loading */
@@ -61,6 +66,8 @@ export default function HomePage({
   timeRange,
   setTimeRange,
   currentUser,
+  customDateRange,
+  onCustomDateRangeChange,
   className = "",
   loading = false
 }: HomePageProps) {
@@ -68,14 +75,15 @@ export default function HomePage({
   // STATE MANAGEMENT
   // ============================================================================
 
-  // Custom date range state for date picker
-  const [customDateRange, setCustomDateRange] = useState<DateRange>(() => {
+  // Custom date range comes from props, use fallback if not provided
+  const defaultCustomDateRange: DateRange = (() => {
     const now = new Date();
     return {
       startDate: new Date(now.getFullYear(), now.getMonth(), 1),
       endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
     };
-  });
+  })();
+  const currentCustomDateRange = customDateRange || defaultCustomDateRange;
 
   // ============================================================================
   // CALCULATE ANALYTICS DATA
@@ -85,7 +93,7 @@ export default function HomePage({
   const leadProviders = dbAgents.filter(agent => agent.role === 'lead_supplier');
 
   // Calculate analytics based on current time range
-  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders);
+  const analyticsData = calculateAnalytics(dbLeads, dbAgents, timeRange, leadProviders, currentCustomDateRange);
 
   const {
     totalLeads,
@@ -149,14 +157,14 @@ export default function HomePage({
           timeRange={timeRange}
           setTimeRange={setTimeRange}
           currentUser={currentUser}
-          customDateRange={customDateRange}
-          onCustomDateRangeChange={setCustomDateRange}
+          customDateRange={currentCustomDateRange}
+          onCustomDateRangeChange={onCustomDateRangeChange}
         />
       </div>
 
-      {/* Enhanced Analytics Charts - All in one row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Modern Compact Status Chart with Donut */}
+      {/* Enhanced Analytics Charts - Conditional based on user role */}
+      <div className={`grid grid-cols-1 ${currentUser?.role === 'agent' ? 'lg:grid-cols-1' : 'lg:grid-cols-3'} gap-4 md:gap-6`}>
+        {/* Modern Compact Status Chart with Donut - Always show */}
         <div className="animate-fade-in-up animation-delay-200 card-hover-lift">
           <ModernCompactStatusChart
             analyticsLeads={analyticsLeads}
@@ -165,23 +173,28 @@ export default function HomePage({
           />
         </div>
 
-        {/* Enhanced Agent Leaderboard - Narrower */}
-        <div className="animate-fade-in-up animation-delay-300 card-hover-lift">
-          <EnhancedAgentLeaderboard
-            analyticsLeads={analyticsLeads}
-            dbAgents={dbAgents}
-            className=""
-          />
-        </div>
+        {/* Enhanced Agent Leaderboard - Only show for non-agents */}
+        {currentUser?.role !== 'agent' && (
+          <div className="animate-fade-in-up animation-delay-300 card-hover-lift">
+            <EnhancedAgentLeaderboard
+              analyticsLeads={analyticsLeads}
+              dbAgents={dbAgents}
+              className=""
+            />
+          </div>
+        )}
 
-        {/* Source Effectiveness Chart - Compact */}
-        <div className="animate-fade-in-up animation-delay-400 card-hover-lift">
-          <SourceEffectivenessChart
-            analyticsLeads={analyticsLeads}
-            className=""
-          />
-        </div>
+        {/* Source Effectiveness Chart - Only show for non-agents */}
+        {currentUser?.role !== 'agent' && (
+          <div className="animate-fade-in-up animation-delay-400 card-hover-lift">
+            <SourceEffectivenessChart
+              analyticsLeads={analyticsLeads}
+              className=""
+            />
+          </div>
+        )}
       </div>
+
     </div>
   );
 }
