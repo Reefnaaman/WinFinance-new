@@ -23,7 +23,12 @@ const AFTERNOON_BATCH_MINUTE = 20;
  * Call this after a lead is successfully created
  */
 export class WhatsAppQueueService {
-  private supabase = getSupabaseClient();
+  private _supabase: ReturnType<typeof getSupabaseClient> | null = null;
+
+  private get supabase() {
+    if (!this._supabase) this._supabase = getSupabaseClient();
+    return this._supabase;
+  }
 
   /**
    * Queue a newly created lead for WhatsApp outreach

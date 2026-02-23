@@ -43,7 +43,12 @@ interface ScheduleResult {
 }
 
 export class AgentSchedulingService {
-  private supabase = getSupabaseClient();
+  private _supabase: ReturnType<typeof getSupabaseClient> | null = null;
+
+  private get supabase() {
+    if (!this._supabase) this._supabase = getSupabaseClient();
+    return this._supabase;
+  }
 
   /**
    * Get all available time slots for the next N working days

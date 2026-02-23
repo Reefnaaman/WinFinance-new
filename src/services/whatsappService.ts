@@ -49,7 +49,14 @@ interface WebhookStatus {
 
 export class WhatsAppService {
   private config: WhatsAppConfig;
-  private supabase = getSupabaseClient();
+  private _supabase: ReturnType<typeof getSupabaseClient> | null = null;
+
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = getSupabaseClient();
+    }
+    return this._supabase;
+  }
 
   constructor() {
     this.config = {

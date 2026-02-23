@@ -25,10 +25,27 @@ interface ConversationMessage {
 }
 
 export class WhatsAppConversationService {
-  private supabase = getSupabaseClient();
-  private whatsapp = new WhatsAppService();
-  private scheduling = new AgentSchedulingService();
-  private calendar = new GoogleCalendarService();
+  private _supabase: ReturnType<typeof getSupabaseClient> | null = null;
+  private _whatsapp: WhatsAppService | null = null;
+  private _scheduling: AgentSchedulingService | null = null;
+  private _calendar: GoogleCalendarService | null = null;
+
+  private get supabase() {
+    if (!this._supabase) this._supabase = getSupabaseClient();
+    return this._supabase;
+  }
+  private get whatsapp() {
+    if (!this._whatsapp) this._whatsapp = new WhatsAppService();
+    return this._whatsapp;
+  }
+  private get scheduling() {
+    if (!this._scheduling) this._scheduling = new AgentSchedulingService();
+    return this._scheduling;
+  }
+  private get calendar() {
+    if (!this._calendar) this._calendar = new GoogleCalendarService();
+    return this._calendar;
+  }
 
   /**
    * Process a batch of leads from the outreach queue
