@@ -8,6 +8,7 @@ export interface AnalyticsData {
   closedLeads: number;
   failedLeads: number;
   pendingAssignment: number;
+  coordinatedLeads: number;
   emailLeads: number;
   supplierLeads: number;
   totalRevenue: number;
@@ -86,6 +87,7 @@ export const calculateAnalytics = (
   const closedLeads = analyticsLeads.filter(l => l.status === 'עסקה נסגרה').length;
   const failedLeads = analyticsLeads.filter(l => l.status === 'התקיימה - כשלון').length;
   const pendingAssignment = analyticsLeads.filter(l => !l.assigned_agent_id).length;
+  const coordinatedLeads = analyticsLeads.filter(l => !!l.assigned_agent_id).length;
   const emailLeads = analyticsLeads.filter(l => l.source === 'Email').length;
 
   // Calculate leads from all lead providers (dynamic)
@@ -105,6 +107,7 @@ export const calculateAnalytics = (
     closedLeads,
     failedLeads,
     pendingAssignment,
+    coordinatedLeads,
     emailLeads,
     supplierLeads,
     totalRevenue,
