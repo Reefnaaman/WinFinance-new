@@ -16,7 +16,7 @@ function getSupabaseClient() {
 // GET - Fetch a single lead by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Check authentication
   const auth = await requireApiAuth(request)
@@ -25,12 +25,13 @@ export async function GET(
   }
 
   try {
+    const { id } = await params
     const supabase = getSupabaseClient()
 
     let query = supabase
       .from('leads')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
 
     // Agents can only see their assigned leads (unless admin/coordinator)
     if (auth.agent && auth.agent.role === 'agent') {
@@ -73,7 +74,7 @@ export async function GET(
 // PATCH - Update a specific lead by ID
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Check authentication
   const auth = await requireApiAuth(request)
@@ -82,6 +83,7 @@ export async function PATCH(
   }
 
   try {
+    const { id } = await params
     const supabase = getSupabaseClient()
     const body = await request.json()
 
@@ -117,7 +119,7 @@ export async function PATCH(
       const { data: leadCheck } = await supabase
         .from('leads')
         .select('assigned_agent_id')
-        .eq('id', params.id)
+        .eq('id', id)
         .single()
 
       if (!leadCheck || leadCheck.assigned_agent_id !== auth.agent.id) {
@@ -135,7 +137,7 @@ export async function PATCH(
         const { data: existingLead } = await supabase
           .from('leads')
           .select('meeting_date')
-          .eq('id', params.id)
+          .eq('id', id)
           .single()
 
         if (!existingLead?.meeting_date) {
@@ -151,7 +153,7 @@ export async function PATCH(
     const { data: updatedLead, error } = await supabase
       .from('leads')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
