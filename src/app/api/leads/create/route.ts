@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { DuplicatePreventionService } from '@/services/duplicatePreventionService'
+import { WhatsAppQueueService } from '@/services/whatsappQueueService'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -66,6 +67,20 @@ export async function POST(request: NextRequest) {
         .from('leads')
         .update({ agent_notes: body.agent_notes.trim() })
         .eq('id', result.lead.id)
+    }
+
+    // Queue lead for WhatsApp outreach (non-blocking)
+    if (result.lead) {
+      try {
+        const queueService = new WhatsAppQueueService()
+        await queueService.queueLeadForOutreach(
+          result.lead.id,
+          result.lead.lead_name,
+          result.lead.phone
+        )
+      } catch (queueError) {
+        console.error('WhatsApp queue error (non-blocking):', queueError)
+      }
     }
 
     return NextResponse.json({

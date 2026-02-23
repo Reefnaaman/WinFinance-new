@@ -23,7 +23,9 @@ Lead management system for Peleg Insurance Agency (WinFinance). Handles end-to-e
 - **Database**: Supabase (PostgreSQL) with Row Level Security
 - **Auth**: Dual auth system - Supabase Auth (user login) + NextAuth.js (Google OAuth for Gmail integration)
 - **Hosting**: Vercel (region: `fra1`)
-- **Cron**: Vercel Cron for Gmail watch renewal (every 6 days)
+- **WhatsApp**: Meta WhatsApp Business Cloud API (automated lead outreach + AI scheduling)
+- **AI Conversations**: Claude API (Anthropic) for WhatsApp chatbot
+- **Cron**: Vercel Cron for Gmail watch renewal + WhatsApp batch sends
 - **Analytics**: Vercel Analytics
 - **Node**: v20 (`.nvmrc`)
 
@@ -55,6 +57,18 @@ GOOGLE_CLIENT_SECRET=
 WEBHOOK_SECRET=
 INTERNAL_API_SECRET=
 
+# WhatsApp Business API (Meta Cloud API)
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_VERIFY_TOKEN=
+WHATSAPP_BUSINESS_ACCOUNT_ID=
+
+# Claude AI (for WhatsApp conversations)
+ANTHROPIC_API_KEY=
+
+# Google Calendar (for agent meeting notifications)
+GOOGLE_CALENDAR_ADMIN_EMAIL=
+
 # External integrations (optional)
 SURANCE_API_URL=
 SURANCE_API_KEY=
@@ -83,6 +97,9 @@ src/
 │       ├── import-csv/             # CSV lead import
 │       ├── export-csv/             # CSV lead export
 │       ├── detect-csv-headers/     # CSV header detection
+│       ├── whatsapp/
+│       │   ├── webhook/            # Meta WhatsApp incoming message webhook
+│       │   └── send-batch/         # Cron: batch WhatsApp outreach (9:34 & 14:20 IL)
 │       ├── gmail/
 │       │   ├── webhook/            # Gmail push notification webhook
 │       │   ├── webhook-v2/         # Updated Gmail webhook
@@ -176,7 +193,12 @@ src/
 ├── services/
 │   ├── duplicatePreventionService.ts  # Multi-criteria duplicate lead detection
 │   ├── emailMonitor.ts            # Email monitoring service
-│   └── gmailService.ts            # Gmail API integration service
+│   ├── gmailService.ts            # Gmail API integration service
+│   ├── whatsappService.ts         # WhatsApp Business API wrapper (send/receive messages)
+│   ├── whatsappConversationService.ts # AI conversation engine (Claude-powered scheduling)
+│   ├── whatsappQueueService.ts    # Lead outreach queue management
+│   ├── agentSchedulingService.ts  # Round-robin agent assignment + time slot management
+│   └── googleCalendarService.ts   # Google Calendar event creation for meetings
 └── types/
     └── next-auth.d.ts             # NextAuth type augmentation
 
@@ -219,6 +241,22 @@ External API access uses API keys (prefix `wf_`, 35 chars). The `requireApiAuth(
 2. Name + similar phone (1-digit typo tolerance)
 3. Same name + phone within last hour
 4. Exact email match
+
+### WhatsApp Automation Pipeline
+Automated lead outreach via WhatsApp with AI-powered scheduling:
+
+1. **Lead created** (any channel) → `WhatsAppQueueService.queueLeadForOutreach()` adds to queue
+2. **Batch cron** (`/api/whatsapp/send-batch`) runs every 30 min UTC, checks Israel time:
+   - Morning batch: **9:34 AM** Israel time (Sun-Thu only)
+   - Afternoon batch: **14:20 PM** Israel time (Sun-Thu only)
+3. **Template message** sent via Meta WhatsApp Business API → lead receives WhatsApp
+4. **Lead replies** → Meta webhook → `/api/whatsapp/webhook` → `WhatsAppConversationService`
+5. **Claude AI** generates contextual Hebrew responses, steers toward scheduling
+6. **Lead selects time slot** → `AgentSchedulingService` assigns agent (round-robin, least-booked) + books 30-min slot
+7. **Confirmation** sent to lead, **Google Calendar event** created for agent
+8. **Lead record updated**: `status='תואם'`, `relevance_status='רלוונטי'`, `meeting_date` set
+
+**Timeout**: Conversations with no reply within 24h are marked `no_reply`, lead gets `relevance_status='אין מענה'`.
 
 ### Color Code System
 Leads imported from Excel/CSV can have color codes that map to statuses (defined in `src/lib/colorMappings.ts`):
@@ -264,6 +302,10 @@ Leads imported from Excel/CSV can have color codes that map to statuses (defined
 - **gmail_tokens**: OAuth tokens for Gmail integration (user_email, access_token, refresh_token, token_expiry)
 - **email_logs**: Email processing and duplicate detection logs
 - **gmail_watch**: Gmail push notification watch state
+- **whatsapp_conversations**: WhatsApp conversation state per lead (status, ai_context, meeting details)
+- **whatsapp_messages**: Log of all WhatsApp messages sent/received (direction, content, delivery status)
+- **whatsapp_outreach_queue**: Queue of leads pending WhatsApp outreach (scheduled_date, batch window)
+- **agent_meeting_slots**: Booked 30-min meeting slots per agent (slot_date, slot_start/end, google_calendar_event_id)
 
 ## Enum Values Reference (Current)
 
@@ -339,6 +381,8 @@ POST   /api/webhooks/lead-created  # External webhook for lead creation
 POST   /api/gmail/webhook          # Gmail push notifications
 POST   /api/gmail/webhook-v2       # Updated Gmail webhook
 GET    /api/gmail/renew-watch      # Cron: renew Gmail watch
+GET    /api/whatsapp/send-batch   # Cron: batch WhatsApp outreach (9:34 & 14:20 IL)
+GET/POST /api/whatsapp/webhook    # Meta WhatsApp webhook (verification + messages)
 ```
 
 ## Key Conventions
