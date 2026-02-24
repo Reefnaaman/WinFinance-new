@@ -61,20 +61,38 @@ export class WhatsAppConversationService {
     const stats = { processed: 0, sent: 0, skipped: 0, errors: 0 };
 
     // Get pending items from the queue for today's batch
-    const { data: queueItems, error } = await this.supabase
+    const { data: pendingItems } = await this.supabase
       .from('whatsapp_outreach_queue')
       .select('*')
       .eq('status', 'pending')
       .eq('scheduled_date', today)
       .eq('scheduled_batch', batchWindow);
 
-    if (error || !queueItems || queueItems.length === 0) {
+    // Also retry previously failed items (max 3 attempts)
+    const MAX_RETRY_ATTEMPTS = 3;
+    const { data: failedItems } = await this.supabase
+      .from('whatsapp_outreach_queue')
+      .select('*')
+      .eq('status', 'failed')
+      .eq('scheduled_date', today)
+      .eq('scheduled_batch', batchWindow)
+      .lt('attempts', MAX_RETRY_ATTEMPTS);
+
+    const queueItems = [...(pendingItems || []), ...(failedItems || [])];
+
+    if (queueItems.length === 0) {
       console.log(`No items in queue for ${batchWindow} batch on ${today}`);
       return stats;
     }
 
-    for (const item of queueItems) {
+    for (let i = 0; i < queueItems.length; i++) {
+      const item = queueItems[i];
       stats.processed++;
+
+      // Rate limit: 200ms delay between sends to avoid hitting Meta API limits
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
 
       try {
         // Mark as processing
@@ -137,13 +155,15 @@ export class WhatsAppConversationService {
         );
 
         if (result.success) {
-          // Update conversation status
+          // Update conversation status + initialize last_message_at for timeout tracking
+          const templateSentAt = new Date().toISOString();
           await this.supabase
             .from('whatsapp_conversations')
             .update({
               status: 'template_sent',
-              template_sent_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+              template_sent_at: templateSentAt,
+              last_message_at: templateSentAt,
+              updated_at: templateSentAt,
             })
             .eq('id', conversation.id);
 
@@ -300,6 +320,35 @@ export class WhatsAppConversationService {
         .update({
           relevance_status: 'לא רלוונטי',
           status: 'לא רלוונטי',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', conversation.lead_id);
+
+      const result = await this.whatsapp.sendTextMessage(phone, aiResponse.message);
+      await this.whatsapp.logMessage(
+        conversation.id,
+        'outbound',
+        aiResponse.message,
+        'text',
+        result.messageId,
+        result.success ? 'sent' : 'failed'
+      );
+    } else if (aiResponse.action === 'needs_human') {
+      // Escalate to human agent - mark conversation for manual review
+      await this.supabase
+        .from('whatsapp_conversations')
+        .update({
+          status: 'needs_human',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', conversation.id);
+
+      // Update lead relevance so coordinators can see it needs attention
+      await this.supabase
+        .from('leads')
+        .update({
+          relevance_status: 'במעקב',
+          agent_notes: `[WhatsApp] נדרש טיפול אנושי: ${messageText}`,
           updated_at: new Date().toISOString(),
         })
         .eq('id', conversation.lead_id);
@@ -476,7 +525,7 @@ export class WhatsAppConversationService {
   private async generateAIResponse(
     conversation: Record<string, unknown>,
     userMessage: string
-  ): Promise<{ message: string; action: 'offer_slots' | 'not_interested' | 'continue' }> {
+  ): Promise<{ message: string; action: 'offer_slots' | 'not_interested' | 'needs_human' | 'continue' }> {
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!anthropicApiKey) {
@@ -495,12 +544,13 @@ export class WhatsAppConversationService {
 4. שעות עבודה: ימים א'-ה', 9:00-19:00
 5. אם הלקוח מעוניין - ענה עם JSON: {"action": "offer_slots", "message": "הודעה ללקוח"}
 6. אם הלקוח לא מעוניין בבירור - ענה עם JSON: {"action": "not_interested", "message": "הודעת פרידה מנומסת"}
-7. אחרת - ענה עם JSON: {"action": "continue", "message": "תשובה ללקוח"}
-8. אל תציע מועדים ספציפיים - המערכת תציג את הזמינות
-9. אם הלקוח שואל מי אתה, אמור שאתה נציג דיגיטלי של סוכנות ביטוח פלג
-10. ההודעות צריכות להיות קצרות ותכליתיות - זה ווטסאפ, לא אימייל
+7. אם הלקוח שואל שאלה מורכבת, מתלונן, מבקש מחירים מיוחדים, או שהשיחה חורגת מתיאום פגישה - ענה עם JSON: {"action": "needs_human", "message": "הודעה ללקוח שנציג אנושי ייצור קשר בהקדם"}
+8. אחרת - ענה עם JSON: {"action": "continue", "message": "תשובה ללקוח"}
+9. אל תציע מועדים ספציפיים - המערכת תציג את הזמינות
+10. אם הלקוח שואל מי אתה, אמור שאתה נציג דיגיטלי של סוכנות ביטוח פלג
+11. ההודעות צריכות להיות קצרות ותכליתיות - זה ווטסאפ, לא אימייל
 
-ענה תמיד ב-JSON בלבד, בפורמט: {"action": "offer_slots" | "not_interested" | "continue", "message": "הטקסט"}`;
+ענה תמיד ב-JSON בלבד, בפורמט: {"action": "offer_slots" | "not_interested" | "needs_human" | "continue", "message": "הטקסט"}`;
 
     const messages = [
       ...conversationHistory.map((msg) => ({
@@ -562,7 +612,7 @@ export class WhatsAppConversationService {
    */
   private getFallbackResponse(
     userMessage: string
-  ): { message: string; action: 'offer_slots' | 'not_interested' | 'continue' } {
+  ): { message: string; action: 'offer_slots' | 'not_interested' | 'needs_human' | 'continue' } {
     const lowerMsg = userMessage.toLowerCase();
 
     // Check for positive intent
@@ -619,6 +669,7 @@ export class WhatsAppConversationService {
           .from('leads')
           .update({
             relevance_status: 'אין מענה',
+            status: 'אין מענה - לתאם מחדש',
             updated_at: new Date().toISOString(),
           })
           .eq('id', conv.lead_id);

@@ -379,24 +379,18 @@ export class AgentSchedulingService {
   }
 
   private toIsraelISO(dateStr: string, timeStr: string): string {
-    // Create a date in Israel timezone
-    // We use a workaround: create the date string and parse it
-    const dateTimeStr = `${dateStr}T${timeStr}:00`;
-    const date = new Date(dateTimeStr);
-    // Adjust for Israel timezone offset
-    const israelFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: TIMEZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-    // For simplicity, store as the Israel local time with a note
-    // The actual ISO conversion happens at the DB level
-    return `${dateStr}T${timeStr}:00+02:00`;
+    // Determine the correct Israel timezone offset for this date (handles DST)
+    // Israel observes +02:00 in winter and +03:00 in summer (DST)
+    const refDate = new Date(`${dateStr}T12:00:00Z`);
+    const utcStr = refDate.toLocaleString('en-US', { timeZone: 'UTC' });
+    const israelStr = refDate.toLocaleString('en-US', { timeZone: TIMEZONE });
+    const utcDate = new Date(utcStr);
+    const israelDate = new Date(israelStr);
+    const offsetMs = israelDate.getTime() - utcDate.getTime();
+    const offsetHours = Math.round(offsetMs / (60 * 60 * 1000));
+    const sign = offsetHours >= 0 ? '+' : '-';
+    const offset = `${sign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
+    return `${dateStr}T${timeStr}:00${offset}`;
   }
 
   private getStartOfWeek(): Date {

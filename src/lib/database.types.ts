@@ -37,7 +37,7 @@ export interface Database {
           id: string
           lead_id: string
           phone: string
-          status: 'queued' | 'template_sent' | 'active' | 'meeting_scheduled' | 'not_interested' | 'no_reply' | 'error'
+          status: 'queued' | 'template_sent' | 'active' | 'meeting_scheduled' | 'not_interested' | 'no_reply' | 'needs_human' | 'error'
           assigned_agent_id: string | null
           meeting_date: string | null
           meeting_slot_start: string | null
@@ -296,4 +296,4 @@ export type WhatsAppMessageInsert = Database['public']['Tables']['whatsapp_messa
 export type WhatsAppQueueItem = Database['public']['Tables']['whatsapp_outreach_queue']['Row']
 export type AgentMeetingSlot = Database['public']['Tables']['agent_meeting_slots']['Row']
 
-export type WhatsAppConversationStatus = 'queued' | 'template_sent' | 'active' | 'meeting_scheduled' | 'not_interested' | 'no_reply' | 'error'
+export type WhatsAppConversationStatus = 'queued' | 'template_sent' | 'active' | 'meeting_scheduled' | 'not_interested' | 'no_reply' | 'needs_human' | 'error'
