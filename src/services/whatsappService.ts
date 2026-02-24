@@ -356,9 +356,20 @@ export class WhatsAppService {
       const data = await response.json();
 
       if (!response.ok) {
+        const errorCode = data?.error?.code;
         const errorMsg =
           data?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
         console.error('WhatsApp API error:', data);
+
+        // Error 131049: Per-user marketing template limit exceeded
+        // The user has received too many marketing messages; back off
+        if (errorCode === 131049) {
+          return {
+            success: false,
+            error: `RATE_LIMITED: ${errorMsg}`,
+          };
+        }
+
         return { success: false, error: errorMsg };
       }
 

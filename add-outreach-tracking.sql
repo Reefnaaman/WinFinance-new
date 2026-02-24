@@ -11,3 +11,19 @@ ALTER TABLE whatsapp_conversations
 CREATE INDEX IF NOT EXISTS idx_wa_conversations_timeout_requeue
   ON whatsapp_conversations(status, outreach_attempt)
   WHERE status = 'no_reply';
+
+-- Permanent opt-out blocklist.
+-- Phones in this table must NEVER be contacted again (Meta WhatsApp Business Policy).
+-- Distinct from "not interested" — opted_out is a permanent, legally binding request.
+CREATE TABLE IF NOT EXISTS whatsapp_opt_out (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phone TEXT NOT NULL UNIQUE,
+  lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+  opted_out_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wa_opt_out_phone ON whatsapp_opt_out(phone);
+
+-- RLS + service role access (matches existing WhatsApp tables)
+ALTER TABLE whatsapp_opt_out ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON whatsapp_opt_out FOR ALL USING (true);

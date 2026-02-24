@@ -25,6 +25,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   not_interested: { label: 'לא מעוניין', color: 'text-gray-600', bgColor: 'bg-gray-100' },
   no_reply: { label: 'אין מענה', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
   needs_human: { label: 'ממתין לנציג', color: 'text-red-600', bgColor: 'bg-red-100' },
+  opted_out: { label: 'ביקש הסרה', color: 'text-slate-600', bgColor: 'bg-slate-200' },
   error: { label: 'שגיאה', color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 

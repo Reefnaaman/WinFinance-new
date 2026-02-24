@@ -115,6 +115,21 @@ export class WhatsAppConversationService {
           .update({ status: 'processing' })
           .eq('id', item.id);
 
+        // Check if phone is on the opt-out blocklist (never contact again)
+        const isOptedOut = await this.isPhoneOptedOut(item.phone);
+        if (isOptedOut) {
+          await this.supabase
+            .from('whatsapp_outreach_queue')
+            .update({
+              status: 'skipped',
+              skip_reason: 'phone_opted_out',
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', item.id);
+          stats.skipped++;
+          continue;
+        }
+
         // Check if there's already an active conversation for this lead
         const { data: existingConv } = await this.supabase
           .from('whatsapp_conversations')
@@ -219,6 +234,25 @@ export class WhatsAppConversationService {
             .eq('id', item.id);
 
           stats.sent++;
+        } else if (result.error?.startsWith('RATE_LIMITED')) {
+          // Meta error 131049: per-user marketing template limit
+          // Skip this user for now, reschedule for afternoon/next day
+          await this.supabase
+            .from('whatsapp_conversations')
+            .update({ status: 'error', error_message: result.error, updated_at: new Date().toISOString() })
+            .eq('id', conversation.id);
+
+          await this.supabase
+            .from('whatsapp_outreach_queue')
+            .update({
+              status: 'skipped',
+              skip_reason: 'meta_rate_limited_131049',
+              processed_at: new Date().toISOString(),
+            })
+            .eq('id', item.id);
+
+          console.log(`Rate limited for phone ${item.phone}, skipping`);
+          stats.skipped++;
         } else {
           throw new Error(result.error || 'Failed to send template message');
         }
@@ -280,6 +314,13 @@ export class WhatsAppConversationService {
 
     // 3. Mark as read
     await this.whatsapp.markAsRead(whatsappMessageId);
+
+    // 3.5. HARD-CODED OPT-OUT CHECK — runs BEFORE AI, deterministic
+    // Per Meta WhatsApp Business Policy: must respect all opt-out requests
+    if (this.isOptOutMessage(messageText)) {
+      await this.handleOptOut(conversation, phone);
+      return;
+    }
 
     // 4. Update conversation status to active if it was template_sent
     if (conversation.status === 'template_sent') {
@@ -670,6 +711,103 @@ export class WhatsAppConversationService {
       message: 'שלום! אנחנו מסוכנות ביטוח פלג. נשמח לתאם שיחת ייעוץ קצרה (30 דקות) כדי לבדוק איך נוכל לעזור. מתי יהיה לך נוח?',
       action: 'continue',
     };
+  }
+
+  // ─── Opt-out handling ─────────────────────────────────────────
+
+  /**
+   * Hard-coded opt-out keyword detection.
+   * This runs BEFORE the AI to ensure opt-outs are always respected,
+   * regardless of AI model behavior.
+   */
+  private isOptOutMessage(messageText: string): boolean {
+    const lowerMsg = messageText.toLowerCase().trim();
+    // Hebrew opt-out phrases
+    const hebrewOptOut = [
+      'תפסיקו', 'הסירו', 'הסירו אותי', 'בקשה להסרה', 'הסרה',
+      'אל תשלחו', 'תמחקו אותי', 'אני לא מעוניין יותר',
+    ];
+    // English opt-out phrases
+    const englishOptOut = ['stop', 'unsubscribe', 'opt out', 'opt-out', 'remove me'];
+
+    return (
+      hebrewOptOut.some((kw) => lowerMsg.includes(kw)) ||
+      englishOptOut.some((kw) => lowerMsg.includes(kw))
+    );
+  }
+
+  /**
+   * Handle an opt-out request:
+   * 1. Send confirmation message
+   * 2. Mark conversation as opted_out
+   * 3. Mark lead as not relevant
+   * 4. Add phone to permanent blocklist
+   */
+  private async handleOptOut(
+    conversation: Record<string, unknown>,
+    phone: string
+  ): Promise<void> {
+    const conversationId = conversation.id as string;
+    const leadId = conversation.lead_id as string;
+
+    // Send opt-out confirmation (required by Meta policy)
+    const confirmMsg = 'הוסרת מרשימת התפוצה שלנו. לא נשלח לך הודעות נוספות. תודה!';
+    const result = await this.whatsapp.sendTextMessage(phone, confirmMsg);
+    await this.whatsapp.logMessage(
+      conversationId,
+      'outbound',
+      confirmMsg,
+      'text',
+      result.messageId,
+      result.success ? 'sent' : 'failed'
+    );
+
+    // Mark conversation as opted_out (distinct from not_interested)
+    await this.supabase
+      .from('whatsapp_conversations')
+      .update({
+        status: 'opted_out',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', conversationId);
+
+    // Mark lead as not relevant
+    await this.supabase
+      .from('leads')
+      .update({
+        relevance_status: 'לא רלוונטי',
+        status: 'לא רלוונטי',
+        agent_notes: '[WhatsApp] הלקוח ביקש הסרה מרשימת התפוצה',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', leadId);
+
+    // Add phone to permanent opt-out blocklist
+    // This prevents any future outreach to this number
+    await this.supabase.from('whatsapp_opt_out').upsert(
+      {
+        phone,
+        lead_id: leadId,
+        opted_out_at: new Date().toISOString(),
+      },
+      { onConflict: 'phone' }
+    );
+
+    console.log(`Phone ${phone} opted out and added to blocklist`);
+  }
+
+  /**
+   * Check if a phone number is on the opt-out blocklist
+   */
+  async isPhoneOptedOut(phone: string): Promise<boolean> {
+    const { data } = await this.supabase
+      .from('whatsapp_opt_out')
+      .select('id')
+      .eq('phone', phone)
+      .limit(1);
+
+    return (data && data.length > 0) || false;
   }
 
   /**
