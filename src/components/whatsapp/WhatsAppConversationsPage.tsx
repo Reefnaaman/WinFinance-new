@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Agent, WhatsAppConversation, WhatsAppMessage } from '@/lib/database.types';
 
+const MAX_OUTREACH_ATTEMPTS = 3;
+
 interface WhatsAppConversationsPageProps {
   dbAgents: Agent[];
 }
@@ -222,7 +224,14 @@ export default function WhatsAppConversationsPage({ dbAgents }: WhatsAppConversa
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs text-slate-400">
-                        <span>{conv.phone}</span>
+                        <span className="flex items-center gap-1.5">
+                          {conv.phone}
+                          {conv.outreach_attempt > 1 && (
+                            <span className="bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                              ניסיון {conv.outreach_attempt}/{MAX_OUTREACH_ATTEMPTS}
+                            </span>
+                          )}
+                        </span>
                         <span>{formatTime(conv.updated_at)}</span>
                       </div>
                       {agentName && (
@@ -254,11 +263,18 @@ export default function WhatsAppConversationsPage({ dbAgents }: WhatsAppConversa
                       {selectedConv?.lead_name || selectedConv?.phone}
                     </span>
                     {selectedConv && (
-                      <span className={`mr-2 text-xs px-2 py-0.5 rounded-full font-medium ${
-                        STATUS_CONFIG[selectedConv.status]?.bgColor || 'bg-gray-100'
-                      } ${STATUS_CONFIG[selectedConv.status]?.color || 'text-gray-600'}`}>
-                        {STATUS_CONFIG[selectedConv.status]?.label || selectedConv.status}
-                      </span>
+                      <>
+                        <span className={`mr-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+                          STATUS_CONFIG[selectedConv.status]?.bgColor || 'bg-gray-100'
+                        } ${STATUS_CONFIG[selectedConv.status]?.color || 'text-gray-600'}`}>
+                          {STATUS_CONFIG[selectedConv.status]?.label || selectedConv.status}
+                        </span>
+                        {selectedConv.outreach_attempt > 1 && (
+                          <span className="mr-1 text-xs px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-600">
+                            ניסיון {selectedConv.outreach_attempt}/{MAX_OUTREACH_ATTEMPTS}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                   {selectedConv?.meeting_date && (

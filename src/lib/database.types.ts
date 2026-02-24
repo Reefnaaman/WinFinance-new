@@ -48,6 +48,7 @@ export interface Database {
           completed_at: string | null
           error_message: string | null
           batch_window: 'morning' | 'afternoon' | null
+          outreach_attempt: number
           created_at: string
           updated_at: string
         }
@@ -66,6 +67,7 @@ export interface Database {
           completed_at?: string | null
           error_message?: string | null
           batch_window?: string | null
+          outreach_attempt?: number
           created_at?: string
           updated_at?: string
         }

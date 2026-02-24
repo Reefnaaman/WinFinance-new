@@ -12,8 +12,22 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// The WhatsApp template name (must be approved by Meta)
+// The WhatsApp template names (must be approved by Meta)
+// Different templates for initial outreach vs follow-ups
 const TEMPLATE_NAME = 'lead_scheduling_intro';
+const FOLLOW_UP_TEMPLATE_NAMES: Record<number, string> = {
+  1: 'lead_scheduling_intro',        // 1st attempt: standard intro
+  2: 'lead_scheduling_reminder',     // 2nd attempt: gentle reminder (fallback to intro if not approved)
+  3: 'lead_scheduling_last_chance',  // 3rd attempt: last chance (fallback to intro if not approved)
+};
+
+// Re-outreach configuration
+const MAX_OUTREACH_ATTEMPTS = 3;
+// Days to wait before each re-outreach attempt (after no reply)
+const REOUTREACH_DELAY_DAYS: Record<number, number> = {
+  1: 1,  // After 1st no-reply: wait 1 working day
+  2: 2,  // After 2nd no-reply: wait 2 working days
+};
 
 // Claude API configuration
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -122,6 +136,19 @@ export class WhatsAppConversationService {
           continue;
         }
 
+        // Determine outreach attempt number from previous conversations for this lead
+        const { data: prevConvs } = await this.supabase
+          .from('whatsapp_conversations')
+          .select('outreach_attempt')
+          .eq('lead_id', item.lead_id)
+          .eq('status', 'no_reply')
+          .order('outreach_attempt', { ascending: false })
+          .limit(1);
+
+        const outreachAttempt = prevConvs && prevConvs.length > 0
+          ? ((prevConvs[0].outreach_attempt as number) || 0) + 1
+          : 1;
+
         // Create a new conversation
         const { data: conversation, error: convError } = await this.supabase
           .from('whatsapp_conversations')
@@ -130,6 +157,7 @@ export class WhatsAppConversationService {
             phone: item.phone,
             status: 'queued',
             batch_window: batchWindow,
+            outreach_attempt: outreachAttempt,
             ai_context: [],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -141,10 +169,14 @@ export class WhatsAppConversationService {
           throw new Error(`Failed to create conversation: ${convError?.message}`);
         }
 
-        // Send the initial template message
+        // Select the template based on outreach attempt
+        // Falls back to the base template if attempt-specific template isn't approved
+        const templateName = FOLLOW_UP_TEMPLATE_NAMES[outreachAttempt] || TEMPLATE_NAME;
+
+        // Send the template message
         const result = await this.whatsapp.sendTemplateMessage(
           item.phone,
-          TEMPLATE_NAME,
+          templateName,
           'he',
           [
             {
@@ -641,7 +673,10 @@ export class WhatsAppConversationService {
   }
 
   /**
-   * Mark conversations with no reply after 24h as timed out
+   * Mark conversations with no reply after 24h as timed out.
+   * If the lead hasn't been contacted MAX_OUTREACH_ATTEMPTS times,
+   * automatically re-queue for another outreach attempt.
+   * After max attempts, mark the lead as cold.
    */
   async markTimedOutConversations(): Promise<number> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -655,27 +690,102 @@ export class WhatsAppConversationService {
       })
       .in('status', ['template_sent', 'active'])
       .lt('last_message_at', twentyFourHoursAgo)
-      .select('id, lead_id');
+      .select('id, lead_id, phone, outreach_attempt');
 
     if (error) {
       console.error('Error marking timed out conversations:', error);
       return 0;
     }
 
-    // Update lead status for timed out conversations
     if (timedOut && timedOut.length > 0) {
       for (const conv of timedOut) {
-        await this.supabase
-          .from('leads')
-          .update({
-            relevance_status: 'אין מענה',
-            status: 'אין מענה - לתאם מחדש',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', conv.lead_id);
+        const attempt = (conv.outreach_attempt as number) || 1;
+
+        if (attempt < MAX_OUTREACH_ATTEMPTS) {
+          // Still have attempts left — schedule a re-outreach
+          const nextAttempt = attempt + 1;
+          const delayDays = REOUTREACH_DELAY_DAYS[attempt] || 1;
+
+          // Get lead name for the queue
+          const { data: lead } = await this.supabase
+            .from('leads')
+            .select('lead_name')
+            .eq('id', conv.lead_id)
+            .single();
+
+          if (lead) {
+            // Schedule re-outreach for N working days from now
+            const scheduledDate = this.getWorkingDayAfter(delayDays);
+            const scheduledBatch = 'morning'; // Re-outreach always in morning batch
+
+            await this.supabase.from('whatsapp_outreach_queue').insert({
+              lead_id: conv.lead_id,
+              phone: conv.phone,
+              lead_name: lead.lead_name,
+              status: 'pending',
+              scheduled_batch: scheduledBatch,
+              scheduled_date: scheduledDate,
+              attempts: 0,
+              created_at: new Date().toISOString(),
+            });
+
+            console.log(
+              `Re-queued lead ${conv.lead_id} for outreach attempt ${nextAttempt}/${MAX_OUTREACH_ATTEMPTS} on ${scheduledDate}`
+            );
+          }
+
+          // Update lead: still "no answer" but we're retrying
+          await this.supabase
+            .from('leads')
+            .update({
+              relevance_status: 'אין מענה',
+              status: 'אין מענה - לתאם מחדש',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', conv.lead_id);
+        } else {
+          // Max attempts reached — mark lead as cold
+          await this.supabase
+            .from('leads')
+            .update({
+              relevance_status: 'לא רלוונטי',
+              status: 'לא רלוונטי',
+              agent_notes: `[WhatsApp] לא ענה אחרי ${MAX_OUTREACH_ATTEMPTS} ניסיונות פנייה`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', conv.lead_id);
+
+          console.log(
+            `Lead ${conv.lead_id} marked cold after ${MAX_OUTREACH_ATTEMPTS} outreach attempts`
+          );
+        }
       }
     }
 
     return timedOut?.length || 0;
+  }
+
+  /**
+   * Get a working day (Sun-Thu) that is N working days from now
+   */
+  private getWorkingDayAfter(workingDays: number): string {
+    const WORK_DAYS = [0, 1, 2, 3, 4]; // Sunday through Thursday
+    const now = new Date();
+    const israelStr = now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' });
+    const israelNow = new Date(israelStr);
+    let remaining = workingDays;
+    const date = new Date(israelNow);
+
+    while (remaining > 0) {
+      date.setDate(date.getDate() + 1);
+      if (WORK_DAYS.includes(date.getDay())) {
+        remaining--;
+      }
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
