@@ -40,7 +40,12 @@ type ErrorResult = {
 type CreateLeadResult = DuplicateResult | SuccessResult | ErrorResult;
 
 export class DuplicatePreventionService {
-  private supabase = getSupabaseClient();
+  private _supabase: ReturnType<typeof getSupabaseClient> | null = null;
+
+  private get supabase() {
+    if (!this._supabase) this._supabase = getSupabaseClient();
+    return this._supabase;
+  }
 
   /**
    * Check if a lead already exists using multiple criteria to prevent duplicates

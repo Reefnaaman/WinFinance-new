@@ -72,7 +72,7 @@ export default function EnhancedWelcomeBanner({
   const monthData = calculateMonthOverMonth(allLeads);
 
   // Extract key metrics
-  const { closedLeads, pendingAssignment, analyticsLeads } = analyticsData;
+  const { closedLeads, pendingAssignment, analyticsLeads, coordinatedLeads } = analyticsData;
 
   // Calculate conversion rate for current period
   const conversionRate =
@@ -110,7 +110,7 @@ export default function EnhancedWelcomeBanner({
         </div>
 
         {/* Compact KPI Cards Grid - integrated into banner */}
-        <div className={`relative z-10 grid grid-cols-2 ${currentUser?.role === 'coordinator' ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-3 md:gap-4`}>
+        <div className={`relative z-10 grid grid-cols-2 ${currentUser?.role === 'coordinator' ? 'md:grid-cols-4' : 'md:grid-cols-5'} gap-3 md:gap-4`}>
           {/* Revenue for selected time period - Hide for coordinators */}
           {currentUser?.role !== 'coordinator' && (
             <div className="animate-fade-in-scale animation-delay-200">
@@ -124,6 +124,21 @@ export default function EnhancedWelcomeBanner({
               />
             </div>
           )}
+
+          {/* Coordinated Leads - leads assigned by coordinator */}
+          <div className="animate-fade-in-scale animation-delay-250">
+            <CompactKPICard
+              title="לידים שתואמו"
+              value={coordinatedLeads}
+              format="number"
+              subtitle={`${
+                analyticsLeads.length > 0
+                  ? ((coordinatedLeads / analyticsLeads.length) * 100).toFixed(0)
+                  : 0
+              }% מכלל הלידים`}
+              animate={true}
+            />
+          </div>
 
           {/* Closed Deals */}
           <div className="animate-fade-in-scale animation-delay-300">

@@ -9,6 +9,7 @@ import LeadsPage from './leads/LeadsPage';
 import SettingsPage from './settings/SettingsPage';
 import HomePage from './dashboard/HomePage';
 import SupplierDashboard from './supplier/SupplierDashboard';
+import WhatsAppConversationsPage from './whatsapp/WhatsAppConversationsPage';
 import { getDateRange, getDateRangeWithEnd } from './shared/leadUtils';
 import { calculateAnalytics } from './dashboard/analyticsUtils';
 import { DateRange } from './dashboard/DateRangePicker';
@@ -388,6 +389,7 @@ export default function FullDashboard() {
     : [
         { id: 'home', label: 'בית', icon: '🏠' },
         { id: 'leads', label: 'לידים', icon: '👥' },
+        { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
         { id: 'settings', label: 'הגדרות', icon: '⚙️' },
       ];
 
@@ -545,6 +547,11 @@ export default function FullDashboard() {
             setTimeRange={setTimeRange}
             customDateRange={customDateRange}
             setCustomDateRange={setCustomDateRange}
+          />
+        )}
+        {currentPage === 'whatsapp' && (
+          <WhatsAppConversationsPage
+            dbAgents={dbAgents}
           />
         )}
         {currentPage === 'settings' && (

@@ -32,8 +32,13 @@ export function getSupabase() {
   return supabaseInstance
 }
 
-// Direct export of singleton instance - no more Proxy pattern
-export const supabase = getSupabase()
+// Lazy singleton - defers creation until first property access at runtime
+// This prevents build-time errors when env vars aren't available
+export const supabase = new Proxy({} as ReturnType<typeof getSupabase>, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getSupabase(), prop, receiver);
+  },
+})
 
 // Server-side client singleton for API routes
 let serverInstance: ReturnType<typeof createClient<Database>> | null = null

@@ -81,13 +81,18 @@ export async function validateApiKey(request: NextRequest): Promise<{
       .eq('id', apiKeyData.id)
 
     // Return authenticated agent info
+    // Supabase join returns a single object for many-to-one FK, but TS types may infer an array
+    const agentInfo = Array.isArray(apiKeyData.agents)
+      ? apiKeyData.agents[0]
+      : apiKeyData.agents
+
     return {
       isValid: true,
       agent: {
-        id: apiKeyData.agents.id,
-        name: apiKeyData.agents.name,
-        email: apiKeyData.agents.email,
-        role: apiKeyData.agents.role,
+        id: agentInfo.id,
+        name: agentInfo.name,
+        email: agentInfo.email,
+        role: agentInfo.role,
         apiKeyId: apiKeyData.id,
         apiKeyName: apiKeyData.name
       }
