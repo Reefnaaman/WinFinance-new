@@ -57,25 +57,23 @@ export const calculateAnalytics = (
   let analyticsLeads: Lead[];
 
   if (timeRange === 'custom' && customDateRange) {
-    // Handle custom date range filtering - include leads created OR updated in period
+    // Handle custom date range filtering - filter by creation date only for consistency with Leads Page
     const startOfCustomStart = new Date(customDateRange.startDate);
     startOfCustomStart.setHours(0, 0, 0, 0);
     const endOfCustomEnd = new Date(customDateRange.endDate);
     endOfCustomEnd.setHours(23, 59, 59, 999);
 
     analyticsLeads = dbLeads.filter(lead => {
-      const updatedInPeriod = new Date(lead.updated_at) >= startOfCustomStart && new Date(lead.updated_at) <= endOfCustomEnd;
-      const createdInPeriod = new Date(lead.created_at) >= startOfCustomStart && new Date(lead.created_at) <= endOfCustomEnd;
-      return updatedInPeriod || createdInPeriod;
+      const createdDate = new Date(lead.created_at);
+      return createdDate >= startOfCustomStart && createdDate <= endOfCustomEnd;
     });
   } else {
-    // Use standard date range filtering - include leads created OR updated in period
+    // Use standard date range filtering - filter by creation date only for consistency with Leads Page
     const analyticsFilterDate = getDateRange(timeRange);
     analyticsLeads = analyticsFilterDate
       ? dbLeads.filter(lead => {
-          const updatedInPeriod = new Date(lead.updated_at) >= analyticsFilterDate;
-          const createdInPeriod = new Date(lead.created_at) >= analyticsFilterDate;
-          return updatedInPeriod || createdInPeriod;
+          const createdDate = new Date(lead.created_at);
+          return createdDate >= analyticsFilterDate;
         })
       : dbLeads;
   }
@@ -273,18 +271,16 @@ export const calculateMonthOverMonth = (allLeads: Lead[]): MonthOverMonthData =>
   const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  // Current month leads - filter by creation OR update activity
+  // Current month leads - filter by creation date only for consistency
   const currentMonthLeads = allLeads.filter(lead => {
-    const updatedInCurrentMonth = new Date(lead.updated_at) >= currentMonthStart;
-    const createdInCurrentMonth = new Date(lead.created_at) >= currentMonthStart;
-    return updatedInCurrentMonth || createdInCurrentMonth;
+    const createdDate = new Date(lead.created_at);
+    return createdDate >= currentMonthStart;
   });
 
-  // Previous month leads - filter by creation OR update activity
+  // Previous month leads - filter by creation date only for consistency
   const previousMonthLeads = allLeads.filter(lead => {
-    const updatedInPreviousMonth = new Date(lead.updated_at) >= previousMonthStart && new Date(lead.updated_at) <= previousMonthEnd;
-    const createdInPreviousMonth = new Date(lead.created_at) >= previousMonthStart && new Date(lead.created_at) <= previousMonthEnd;
-    return updatedInPreviousMonth || createdInPreviousMonth;
+    const createdDate = new Date(lead.created_at);
+    return createdDate >= previousMonthStart && createdDate <= previousMonthEnd;
   });
 
   // Calculate metrics for current month
