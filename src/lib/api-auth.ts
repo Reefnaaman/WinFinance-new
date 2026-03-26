@@ -81,13 +81,16 @@ export async function validateApiKey(request: NextRequest): Promise<{
       .eq('id', apiKeyData.id)
 
     // Return authenticated agent info
+    // agents is returned as an array from the join, get the first element
+    const agentData = Array.isArray(apiKeyData.agents) ? apiKeyData.agents[0] : apiKeyData.agents
+
     return {
       isValid: true,
       agent: {
-        id: apiKeyData.agents.id,
-        name: apiKeyData.agents.name,
-        email: apiKeyData.agents.email,
-        role: apiKeyData.agents.role,
+        id: agentData.id,
+        name: agentData.name,
+        email: agentData.email,
+        role: agentData.role,
         apiKeyId: apiKeyData.id,
         apiKeyName: apiKeyData.name
       }
