@@ -2,6 +2,7 @@ import Imap from 'imap'
 import { simpleParser } from 'mailparser'
 import { createClient } from '@supabase/supabase-js'
 import { DuplicatePreventionService } from './duplicatePreventionService'
+import { parseLeadEmail, type ParsedLead as SharedParsedLead } from '@/lib/leadEmailParser'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -26,14 +27,7 @@ interface EmailSettings {
   last_check_date?: string
 }
 
-interface ParsedLead {
-  lead_name: string
-  phone: string
-  address?: string
-  notes?: string
-  campaign?: string
-  operator?: string
-}
+type ParsedLead = SharedParsedLead
 
 export class EmailMonitor {
   private imap: Imap | null = null
@@ -82,60 +76,7 @@ export class EmailMonitor {
   }
 
   private parseEmailContent(text: string): ParsedLead | null {
-    const content = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
-
-    // Extract שם מלא (Full name)
-    const nameMatch = content.match(/שם מלא:\s*(.+)/i)
-    if (!nameMatch) return null
-
-    // Extract טלפון נייד (Mobile phone)
-    const phoneMatch = content.match(/טלפון נייד:\s*(.+)/i)
-    if (!phoneMatch) return null
-
-    const result: ParsedLead = {
-      lead_name: nameMatch[1].trim(),
-      phone: this.cleanPhoneNumber(phoneMatch[1].trim())
-    }
-
-    // Extract כתובת מלאה (Full address)
-    const addressMatch = content.match(/כתובת מלאה:\s*(.+)/i)
-    if (addressMatch) {
-      result.address = addressMatch[1].trim()
-    }
-
-    // Extract הערות (Notes)
-    const notesMatch = content.match(/הערות:\s*(.+)/i)
-    if (notesMatch) {
-      result.notes = notesMatch[1].trim()
-    }
-
-    // Extract campaign info
-    const campaignMatch = content.match(/התקבל ליד חדש מקמפיין\s*-\s*(.+)/i)
-    if (campaignMatch) {
-      result.campaign = campaignMatch[1].trim()
-    }
-
-    // Extract operator info
-    const operatorMatch = content.match(/בעזרת טלפנית בשם\s*-\s*(.+)/i)
-    if (operatorMatch) {
-      result.operator = operatorMatch[1].trim()
-    }
-
-    return result
-  }
-
-  private cleanPhoneNumber(phone: string): string {
-    if (!phone) return phone
-
-    // Remove all non-digits
-    const digits = phone.replace(/[^\d]/g, '')
-
-    // Ensure Israeli format (start with 0)
-    if (digits.length === 9 && !digits.startsWith('0')) {
-      return '0' + digits
-    }
-
-    return digits.length >= 9 ? digits : phone
+    return parseLeadEmail(text)
   }
 
   private async createLeadFromParsedData(parsedLead: ParsedLead, originalEmail: any): Promise<string | null> {
@@ -160,24 +101,6 @@ export class EmailMonitor {
         return duplicateCheck.existingLead?.id || null
       }
 
-      const notes = []
-
-      if (parsedLead.campaign) {
-        notes.push(`קמפיין: ${parsedLead.campaign}`)
-      }
-
-      if (parsedLead.operator) {
-        notes.push(`טלפנית: ${parsedLead.operator}`)
-      }
-
-      if (parsedLead.address) {
-        notes.push(`כתובת: ${parsedLead.address}`)
-      }
-
-      if (parsedLead.notes) {
-        notes.push(parsedLead.notes)
-      }
-
       // Create the lead using duplicate prevention service
       const result = await duplicateService.createLeadSafely(
         leadData,
@@ -186,13 +109,13 @@ export class EmailMonitor {
       )
 
       if (result.success && result.lead) {
-        // Update with additional notes if any
-        if (notes.length > 0) {
+        // Persist the consolidated notes built by the shared parser
+        if (parsedLead.notes) {
           const supabase = getSupabaseClient()
           await supabase
             .from('leads')
             .update({
-              agent_notes: notes.join('\n'),
+              agent_notes: parsedLead.notes,
               email_processed: true
             })
             .eq('id', result.lead.id)

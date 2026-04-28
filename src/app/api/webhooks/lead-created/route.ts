@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { DuplicatePreventionService } from '@/services/duplicatePreventionService'
+import { parseLeadEmail, cleanPhoneNumber } from '@/lib/leadEmailParser'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -141,70 +142,15 @@ function extractLeadData(body: any): any {
 }
 
 function parseEmailForWebhook(emailContent: string, sourceName?: string) {
-  const result: any = {
-    lead_name: '',
-    phone: '',
-    source: sourceName || 'email'
+  const parsed = parseLeadEmail(emailContent, { sourceName })
+  if (!parsed) {
+    return { lead_name: '', phone: '', source: sourceName || 'email' }
   }
-
-  // Extract שם מלא (Full name)
-  const nameMatch = emailContent.match(/שם מלא:\s*(.+)/i)
-  if (nameMatch) {
-    result.lead_name = nameMatch[1].trim()
+  return {
+    lead_name: parsed.lead_name,
+    phone: parsed.phone,
+    email: parsed.email,
+    source: parsed.source,
+    notes: parsed.notes,
   }
-
-  // Extract טלפון נייד (Mobile phone) or טלפון
-  const phoneMatch = emailContent.match(/טלפון נייד:\s*(.+)/i) || emailContent.match(/טלפון:\s*(.+)/i)
-  if (phoneMatch) {
-    result.phone = cleanPhoneNumber(phoneMatch[1].trim())
-  }
-
-  // Extract email
-  const emailMatch = emailContent.match(/אימייל:\s*(.+)/i) || emailContent.match(/מייל:\s*(.+)/i) || emailContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i)
-  if (emailMatch) {
-    result.email = emailMatch[1].trim()
-  }
-
-  // Build notes from all available info
-  const notes = []
-
-  const addressMatch = emailContent.match(/כתובת מלאה:\s*(.+)/i) || emailContent.match(/כתובת:\s*(.+)/i)
-  if (addressMatch) {
-    notes.push(`כתובת: ${addressMatch[1].trim()}`)
-  }
-
-  const notesMatch = emailContent.match(/הערות:\s*(.+)/i)
-  if (notesMatch) {
-    notes.push(notesMatch[1].trim())
-  }
-
-  const campaignMatch = emailContent.match(/התקבל ליד חדש מקמפיין\s*-\s*(.+)/i)
-  if (campaignMatch) {
-    notes.push(`קמפיין: ${campaignMatch[1].trim()}`)
-  }
-
-  const operatorMatch = emailContent.match(/בעזרת טלפנית בשם\s*-\s*(.+)/i)
-  if (operatorMatch) {
-    notes.push(`טלפנית: ${operatorMatch[1].trim()}`)
-  }
-
-  if (notes.length > 0) {
-    result.notes = notes.join('\n')
-  }
-
-  return result
-}
-
-function cleanPhoneNumber(phone: string): string {
-  if (!phone) return phone
-
-  // Remove all non-digits
-  const digits = phone.replace(/[^\d]/g, '')
-
-  // Ensure Israeli format (start with 0)
-  if (digits.length === 9 && !digits.startsWith('0')) {
-    return '0' + digits
-  }
-
-  return digits.length >= 9 ? digits : phone
 }
