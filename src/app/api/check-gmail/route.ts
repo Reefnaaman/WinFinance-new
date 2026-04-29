@@ -73,10 +73,14 @@ export async function POST(request: NextRequest) {
     const sendersForQuery = customFrom.length ? customFrom : ALLOWED_SENDERS
     const fromClause = `(${sendersForQuery.map((s) => `from:${s}`).join(' OR ')})`
 
+    // Include Spam and Trash too — Leadim "noreply@" senders often land in Spam,
+    // and Gmail's search excludes those by default. `in:anywhere` covers all labels.
+    const includeSpamTrash = body?.includeSpamTrash !== false
+
     let query: string
     if (isWebhook) {
       // For webhook: check RECENT emails (last hour) regardless of read status
-      query = `${fromClause} newer_than:1h`
+      query = `${fromClause} newer_than:1h${includeSpamTrash ? ' in:anywhere' : ''}`
       console.log('Webhook trigger - checking emails from last hour (read and unread)')
     } else {
       // For manual check: configurable backfill window (default 2 days)
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
       const since = new Date()
       since.setDate(since.getDate() - days)
       const dateString = `${since.getFullYear()}/${since.getMonth() + 1}/${since.getDate()}`
-      query = `${fromClause} after:${dateString}`
+      query = `${fromClause} after:${dateString}${includeSpamTrash ? ' in:anywhere' : ''}`
       console.log(`Manual check - checking emails from past ${days} day(s)`)
     }
 
