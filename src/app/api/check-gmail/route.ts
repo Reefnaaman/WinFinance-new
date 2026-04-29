@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GmailService } from '@/services/gmailService'
 import { createClient } from '@supabase/supabase-js'
+import { ALLOWED_LEAD_SENDERS, buildGmailFromClause } from '@/lib/leadSenders'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -61,21 +62,16 @@ export async function POST(request: NextRequest) {
     // Check if this is from webhook (instant processing) or manual (batch processing)
     const isWebhook = body.triggered_by === 'webhook'
 
-    // Allowed senders. Use bare email for exact match, or bare domain to match any
-    // sender at that domain (e.g. 'leadim.cloud' matches noreply@il1.leadim.cloud,
-    // mail@leadim.cloud, etc — Gmail's `from:domain` operator is a domain wildcard).
-    const ALLOWED_SENDERS = [
-      'leadmail@raion.co.il',
-      'reefnoyman55@gmail.com',
-      'leadim.cloud',
-    ]
+    // Sender allowlist (shared with webhook-v2). Pass {from: "..."} in body for
+    // a one-off ad-hoc filter (e.g. when hunting for an unknown sender).
     const customFrom = typeof body?.from === 'string' && body.from.trim() ? [body.from.trim()] : []
-    const sendersForQuery = customFrom.length ? customFrom : ALLOWED_SENDERS
-    const fromClause = `(${sendersForQuery.map((s) => `from:${s}`).join(' OR ')})`
+    const fromClause = customFrom.length
+      ? `(${customFrom.map((s) => `from:${s}`).join(' OR ')})`
+      : buildGmailFromClause(ALLOWED_LEAD_SENDERS)
 
-    // Include Spam and Trash too — Leadim "noreply@" senders often land in Spam,
-    // and Gmail's search excludes those by default. `in:anywhere` covers all labels.
-    const includeSpamTrash = body?.includeSpamTrash !== false
+    // Spam/Trash are EXCLUDED by default — we don't want spam to flow into
+    // the CRM. Opt in only by passing {includeSpamTrash: true} for diagnostics.
+    const includeSpamTrash = body?.includeSpamTrash === true
 
     let query: string
     if (isWebhook) {

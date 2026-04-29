@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { google } from 'googleapis'
 import { GmailService } from '@/services/gmailService'
 import { DuplicatePreventionService } from '@/services/duplicatePreventionService'
+import { isAllowedLeadSender } from '@/lib/leadSenders'
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -131,6 +132,16 @@ export async function POST(request: NextRequest) {
 
             // Extract email content
             const { text, html, from, subject, date } = gmailService.parseEmailContent(fullMessage.data)
+
+            // Defense-in-depth: skip emails whose sender isn't in the allowlist.
+            // Without this, a random email landing in the connected Gmail could
+            // theoretically slip through if its body happened to match the
+            // parser's Hebrew label patterns.
+            if (!isAllowedLeadSender(from)) {
+              console.log(`⏭️ Skipping non-allowed sender: ${from}`)
+              continue
+            }
+
             const emailContent = text || html || ''
 
             // Parse lead information
