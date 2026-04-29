@@ -17,7 +17,7 @@ export default function EmailSettings() {
     email_username: '',
     email_password: '',
     email_secure: true,
-    monitored_email_addresses: 'leadmail@raion.co.il, reefnoyman55@gmail.com',
+    monitored_email_addresses: 'leadmail@raion.co.il, reefnoyman55@gmail.com, noreply@il1.leadim.cloud',
     email_enabled: false
   });
 

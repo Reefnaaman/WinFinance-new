@@ -61,19 +61,27 @@ export async function POST(request: NextRequest) {
     // Check if this is from webhook (instant processing) or manual (batch processing)
     const isWebhook = body.triggered_by === 'webhook'
 
+    // Allowed senders. Add new lead providers here.
+    const ALLOWED_SENDERS = [
+      'leadmail@raion.co.il',
+      'reefnoyman55@gmail.com',
+      'noreply@il1.leadim.cloud',
+    ]
+    const fromClause = `(${ALLOWED_SENDERS.map((s) => `from:${s}`).join(' OR ')})`
+
     let query: string
     if (isWebhook) {
       // For webhook: check RECENT emails (last hour) regardless of read status
-      // This ensures we catch emails even if they were auto-marked as read
-      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) newer_than:1h`
+      query = `${fromClause} newer_than:1h`
       console.log('Webhook trigger - checking emails from last hour (read and unread)')
     } else {
-      // For manual check: get emails from past 2 days
-      const twoDaysAgo = new Date()
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-      const dateString = `${twoDaysAgo.getFullYear()}/${twoDaysAgo.getMonth() + 1}/${twoDaysAgo.getDate()}`
-      query = `(from:leadmail@raion.co.il OR from:reefnoyman55@gmail.com) after:${dateString}`
-      console.log('Manual check - checking emails from past 2 days')
+      // For manual check: configurable backfill window (default 2 days)
+      const days = Math.max(1, Math.min(365, Number(body?.days) || 2))
+      const since = new Date()
+      since.setDate(since.getDate() - days)
+      const dateString = `${since.getFullYear()}/${since.getMonth() + 1}/${since.getDate()}`
+      query = `${fromClause} after:${dateString}`
+      console.log(`Manual check - checking emails from past ${days} day(s)`)
     }
 
     console.log(`Query: ${query}`)
@@ -89,8 +97,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Limit processing to prevent flooding
-    const MAX_EMAILS_PER_RUN = 20;
+    // Limit processing to prevent flooding (configurable per request, default 20, max 200)
+    const MAX_EMAILS_PER_RUN = Math.max(1, Math.min(200, Number(body?.maxEmails) || 20));
     const messagesToProcess = messages.slice(0, MAX_EMAILS_PER_RUN);
 
     console.log(`Found ${messages.length} emails matching query, processing first ${messagesToProcess.length}`)

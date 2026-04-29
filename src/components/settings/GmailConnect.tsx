@@ -249,11 +249,11 @@ export default function GmailConnect() {
                 }}
                 className="w-full px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
               >
-                בדוק אימיילים מ-Raion (יומיים אחרונים)
+                בדוק אימיילים מספקי לידים (יומיים אחרונים)
               </button>
 
               <p className="text-xs text-gray-500 text-center">
-                בודק אימיילים מיומיים אחרונים מ: leadmail@raion.co.il, reefnoyman55@gmail.com
+                בודק אימיילים מיומיים אחרונים מ: leadmail@raion.co.il, reefnoyman55@gmail.com, noreply@il1.leadim.cloud
               </p>
             </div>
           </div>
