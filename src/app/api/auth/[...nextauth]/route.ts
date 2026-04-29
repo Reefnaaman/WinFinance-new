@@ -33,33 +33,66 @@ const handler = NextAuth({
     async jwt({ token, account, user }) {
       // Initial sign in
       if (account && user) {
-        console.log('Initial sign in, saving tokens...')
+        console.log('[gmail-auth] Initial sign in, saving tokens...', {
+          email: user.email,
+          hasAccessToken: !!account.access_token,
+          hasRefreshToken: !!account.refresh_token,
+          scope: account.scope,
+          expiresAt: account.expires_at,
+        })
 
-        // Save Gmail tokens to database
-        if (account.access_token && account.refresh_token) {
+        // Save Gmail tokens. Persist whenever an access token is present.
+        // Google only returns refresh_token on the first consent; on subsequent
+        // re-authorizations it is often omitted even with prompt=consent. In
+        // that case we keep whatever refresh_token is already on file so the
+        // server can keep refreshing the access token in the background.
+        if (account.access_token && user.email) {
           const supabase = getSupabaseClient()
           const tokenExpiry = account.expires_at
             ? new Date(account.expires_at * 1000).toISOString()
             : new Date(Date.now() + 3600 * 1000).toISOString()
 
+          let refreshTokenToStore = account.refresh_token as string | undefined
+
+          if (!refreshTokenToStore) {
+            const { data: existing } = await supabase
+              .from('gmail_tokens')
+              .select('refresh_token')
+              .eq('user_email', user.email)
+              .maybeSingle()
+            if (existing?.refresh_token) {
+              refreshTokenToStore = existing.refresh_token
+              console.log('[gmail-auth] Google omitted refresh_token; preserving existing one on file')
+            } else {
+              console.warn('[gmail-auth] No refresh_token from Google AND none on file — background refresh will not work until the user revokes access at myaccount.google.com/permissions and reconnects')
+            }
+          }
+
+          const upsertPayload: Record<string, unknown> = {
+            user_email: user.email,
+            access_token: account.access_token,
+            token_expiry: tokenExpiry,
+            scope: account.scope || '',
+            updated_at: new Date().toISOString(),
+          }
+          if (refreshTokenToStore) {
+            upsertPayload.refresh_token = refreshTokenToStore
+          }
+
           const { error } = await supabase
             .from('gmail_tokens')
-            .upsert({
-              user_email: user.email!,
-              access_token: account.access_token,
-              refresh_token: account.refresh_token,
-              token_expiry: tokenExpiry,
-              scope: account.scope || '',
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'user_email'
-            })
+            .upsert(upsertPayload, { onConflict: 'user_email' })
 
           if (error) {
-            console.error('Error saving Gmail tokens:', error)
+            console.error('[gmail-auth] Error saving Gmail tokens:', error)
           } else {
-            console.log('Gmail tokens saved successfully')
+            console.log('[gmail-auth] Gmail tokens saved successfully for', user.email)
           }
+        } else {
+          console.error('[gmail-auth] Skipping save — missing access_token or user.email', {
+            hasAccessToken: !!account.access_token,
+            email: user.email,
+          })
         }
 
         return {
