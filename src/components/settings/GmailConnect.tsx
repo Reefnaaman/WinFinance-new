@@ -3,8 +3,16 @@
 import React, { useState, useEffect } from 'react'
 import { signIn, useSession, signOut } from 'next-auth/react'
 import { Mail, CheckCircle, XCircle, Loader } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+
+interface GmailStatus {
+  connected: boolean
+  email: string | null
+  expiresAt: string | null
+  expired: boolean
+  hasRefreshToken: boolean
+  error?: string
+}
 
 export default function GmailConnect() {
   const { data: session, status } = useSession()
@@ -12,6 +20,7 @@ export default function GmailConnect() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [gmailStatus, setGmailStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking')
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   useEffect(() => {
     checkGmailConnection()
@@ -19,72 +28,68 @@ export default function GmailConnect() {
 
   const checkGmailConnection = async () => {
     setGmailStatus('checking')
+    setStatusMessage(null)
 
     try {
-      // Check for any Gmail tokens (not filtered by current user)
-      // This allows checking if ANY Gmail is connected
-      const { data, error } = await supabase
-        .from('gmail_tokens')
-        .select('user_email, token_expiry')
-        .order('created_at', { ascending: false }) as {
-          data: { user_email: string; token_expiry: string }[] | null;
-          error: any
-        }
+      // Read connection status via the server-side API. This uses the Supabase
+      // service-role key on the server, bypassing RLS — so the answer is the
+      // ground truth, not what the anon client can see.
+      const response = await fetch('/api/gmail/status', { cache: 'no-store' })
+      const data: GmailStatus = await response.json()
 
-      console.log('Gmail tokens query result:', {
-        data,
-        error,
-        currentUser: user?.email,
-        timestamp: new Date().toISOString()
-      })
+      console.log('Gmail status API result:', { data, currentUser: user?.email, timestamp: new Date().toISOString() })
 
-      if (error) {
-        console.error('Supabase error:', error)
+      if (data.error) {
         setGmailStatus('disconnected')
+        setConnectedEmail(null)
+        setStatusMessage(`שגיאה בבדיקת החיבור: ${data.error}`)
         return
       }
 
-      if (data && data.length > 0) {
-        const token = data[0]
-        const expiryDate = new Date(token.token_expiry)
-        const now = new Date()
+      if (data.connected && data.email) {
+        setGmailStatus('connected')
+        setConnectedEmail(data.email)
+        setStatusMessage(null)
+        return
+      }
 
-        console.log('Token validation:', {
-          tokenExpiry: expiryDate.toISOString(),
-          now: now.toISOString(),
-          isValid: expiryDate > now
-        })
-
-        if (expiryDate > now) {
-          setGmailStatus('connected')
-          setConnectedEmail(token.user_email)
-        } else {
-          // Token expired, try to refresh it
-          console.log('Token expired, attempting to refresh...')
-
-          const refreshResponse = await fetch('/api/gmail/refresh-token', {
-            method: 'POST'
-          })
-
-          if (refreshResponse.ok) {
-            const refreshData = await refreshResponse.json()
-            console.log('Token refreshed successfully:', refreshData)
-            setGmailStatus('connected')
-            setConnectedEmail(token.user_email)
-          } else {
-            console.error('Failed to refresh token')
-            setGmailStatus('disconnected')
-            setConnectedEmail(null)
-          }
-        }
-      } else {
-        console.log('No Gmail tokens found in database')
+      // Not connected — explain why.
+      if (!data.email) {
         setGmailStatus('disconnected')
         setConnectedEmail(null)
+        setStatusMessage('לא נמצא טוקן Gmail במערכת. נראה שתהליך החיבור לא הושלם בצד השרת — נסה ללחוץ "חבר Gmail" שוב, ובדוק את לוגי Vercel של /api/auth/[...nextauth].')
+        return
       }
+
+      if (data.expired && data.email) {
+        // Try to refresh server-side
+        console.log('Token expired, attempting refresh...')
+        const refreshResponse = await fetch('/api/gmail/refresh-token', { method: 'POST' })
+        if (refreshResponse.ok) {
+          setGmailStatus('connected')
+          setConnectedEmail(data.email)
+          setStatusMessage(null)
+          return
+        }
+        const refreshErr = await refreshResponse.json().catch(() => null)
+        setGmailStatus('disconnected')
+        setConnectedEmail(null)
+        setStatusMessage(
+          data.hasRefreshToken
+            ? `הטוקן פג תוקף וחידושו נכשל${refreshErr?.error ? `: ${refreshErr.error}` : ''}`
+            : 'הטוקן פג תוקף ואין refresh_token זמין. בטל הרשאה ב-myaccount.google.com/permissions וחבר מחדש.'
+        )
+        return
+      }
+
+      setGmailStatus('disconnected')
+      setConnectedEmail(null)
+      setStatusMessage('לא מחובר.')
     } catch (error) {
       console.error('Unexpected error checking Gmail connection:', error)
       setGmailStatus('disconnected')
+      setConnectedEmail(null)
+      setStatusMessage('שגיאה לא צפויה בבדיקת החיבור. בדוק את הקונסול וה-Network tab.')
     }
   }
 
@@ -160,7 +165,12 @@ export default function GmailConnect() {
             ) : (
               <>
                 <XCircle className="w-5 h-5 text-red-500" />
-                <span className="text-sm text-gray-600">לא מחובר</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">לא מחובר</p>
+                  {statusMessage && (
+                    <p className="text-xs text-gray-500 max-w-md">{statusMessage}</p>
+                  )}
+                </div>
               </>
             )}
           </div>
