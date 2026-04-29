@@ -61,13 +61,17 @@ export async function POST(request: NextRequest) {
     // Check if this is from webhook (instant processing) or manual (batch processing)
     const isWebhook = body.triggered_by === 'webhook'
 
-    // Allowed senders. Add new lead providers here.
+    // Allowed senders. Use bare email for exact match, or bare domain to match any
+    // sender at that domain (e.g. 'leadim.cloud' matches noreply@il1.leadim.cloud,
+    // mail@leadim.cloud, etc — Gmail's `from:domain` operator is a domain wildcard).
     const ALLOWED_SENDERS = [
       'leadmail@raion.co.il',
       'reefnoyman55@gmail.com',
-      'noreply@il1.leadim.cloud',
+      'leadim.cloud',
     ]
-    const fromClause = `(${ALLOWED_SENDERS.map((s) => `from:${s}`).join(' OR ')})`
+    const customFrom = typeof body?.from === 'string' && body.from.trim() ? [body.from.trim()] : []
+    const sendersForQuery = customFrom.length ? customFrom : ALLOWED_SENDERS
+    const fromClause = `(${sendersForQuery.map((s) => `from:${s}`).join(' OR ')})`
 
     let query: string
     if (isWebhook) {
