@@ -97,7 +97,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'No new emails found',
-        processed: 0
+        processed: 0,
+        queriedAs: userEmail,
+        query,
       })
     }
 
@@ -228,6 +230,8 @@ export async function POST(request: NextRequest) {
       created: createdLeads,
       skippedInvalid: skippedInvalid,
       totalFound: messages.length,
+      queriedAs: userEmail,
+      query,
       errors: errors.length > 0 ? errors : undefined
     })
 
