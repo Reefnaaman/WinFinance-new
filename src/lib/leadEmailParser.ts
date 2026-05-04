@@ -13,6 +13,46 @@ export interface ParseLeadEmailOptions {
 
 const NEXT_FIELD_RE = /^(שם|טלפון|אימייל|מייל|כתובת|התקבל|בעזרת|גיל|תאריך לידה|מספר|ביטוח|מין|האם|סוג|כמה)/
 
+// Known field labels and section headers in lead emails. Used to normalize
+// content so each label starts on its own line, regardless of whether the
+// source email used real line breaks. Without this, regex captures like
+// (.+) greedily eat everything until end of line — pulling adjacent field
+// values into the previous field.
+const KNOWN_BOUNDARIES = [
+  'שם מלא:', 'שם:',
+  'טלפון נייד:', 'טלפון:',
+  'גיל:',
+  'תאריך לידה:',
+  'מספר תעודת זהות:', 'מספר ליד:',
+  'ת.ז.:', 'ת.ז:',
+  'ביטוח מבוקש:',
+  'מין:',
+  'האם מעשן:',
+  'סוג כיסויי הבריאות:',
+  'כמה אתה משלם בחודש?:', 'כמה אתה משלם בחודש:',
+  'אימייל:', 'מייל:',
+  'כתובת מלאה:', 'כתובת:',
+  'הערות:',
+  'פרטי ליד', 'ביטוחים', 'הלוואות', 'שאלון ביטוח',
+] as const
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')
+}
+
+function insertFieldBoundaries(content: string): string {
+  // Sort longest-first so the longer label wins when one is a prefix of another
+  // (e.g. 'שם מלא:' is matched/replaced before 'שם:' so the engine doesn't
+  // pre-emptively split inside the longer label).
+  const sorted = [...KNOWN_BOUNDARIES].sort((a, b) => b.length - a.length)
+  let out = content
+  for (const label of sorted) {
+    const re = new RegExp(`(?<=\\S)\\s*(?=${escapeRegex(label)})`, 'g')
+    out = out.replace(re, '\n')
+  }
+  return out
+}
+
 export function parseLeadEmail(
   emailContent: string,
   opts: ParseLeadEmailOptions = {}
@@ -20,7 +60,8 @@ export function parseLeadEmail(
   if (!emailContent) return null
 
   const stripped = stripHtml(emailContent)
-  const content = stripped.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+  const normalized = stripped.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+  const content = insertFieldBoundaries(normalized)
 
   // Required: name. Try the legacy "שם מלא:" first, then the new Leadim "שם:".
   const nameMatch =
