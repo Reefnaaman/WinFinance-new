@@ -30,10 +30,17 @@ const KNOWN_BOUNDARIES = [
   'האם מעשן:',
   'סוג כיסויי הבריאות:',
   'כמה אתה משלם בחודש?:', 'כמה אתה משלם בחודש:',
-  'אימייל:', 'מייל:',
+  'אימייל:', 'מייל:', 'דוא"ל:', 'דואל:', 'דוא״ל:',
   'כתובת מלאה:', 'כתובת:',
+  'עיר מגורים:',
+  'אילו סוגי ביטוחים יש לך?:', 'אילו סוגי ביטוחים יש לך:',
+  'תאריך הנפקה:',
+  'מהו הסכום המשוער הקיים בקופות שלך להערכתך?:',
+  'מהו הסכום המשוער הקיים בקופות שלך להערכתך:',
+  'סכום כיסוי:',
+  'תקופת ביטוח:',
   'הערות:',
-  'פרטי ליד', 'ביטוחים', 'הלוואות', 'שאלון ביטוח',
+  'פרטי ליד', 'ביטוחים', 'הלוואות', 'שאלון ביטוח', 'פיננסים',
 ] as const
 
 function escapeRegex(s: string): string {
@@ -89,6 +96,8 @@ export function parseLeadEmail(
   const emailMatch =
     content.match(/אימייל:\s*(.+)/i) ||
     content.match(/מייל:\s*(.+)/i) ||
+    content.match(/דוא["״׳]?ל:\s*(.+)/i) ||
+    content.match(/דואל:\s*(.+)/i) ||
     content.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i)
   if (emailMatch) {
     const candidate = emailMatch[1].trim()
@@ -137,6 +146,24 @@ export function parseLeadEmail(
 
   const monthlyMatch = content.match(/כמה אתה משלם בחודש\??:\s*(.+)/i)
   if (monthlyMatch) notes.push(`תשלום חודשי: ${monthlyMatch[1].trim()}`)
+
+  const cityMatch = content.match(/עיר מגורים:\s*(.+)/i)
+  if (cityMatch) notes.push(`עיר: ${cityMatch[1].trim()}`)
+
+  const insuranceTypesOwnedMatch = content.match(/אילו סוגי ביטוחים יש לך\??:\s*(.+)/i)
+  if (insuranceTypesOwnedMatch) notes.push(`ביטוחים קיימים: ${insuranceTypesOwnedMatch[1].trim()}`)
+
+  const issueDateMatch = content.match(/תאריך הנפקה:\s*(.+)/i)
+  if (issueDateMatch) notes.push(`תאריך הנפקה: ${issueDateMatch[1].trim()}`)
+
+  const fundsMatch = content.match(/מהו הסכום המשוער הקיים בקופות שלך להערכתך\??:\s*(.+)/i)
+  if (fundsMatch) notes.push(`סכום בקופות (משוער): ${fundsMatch[1].trim()}`)
+
+  const coverageAmountMatch = content.match(/סכום כיסוי:\s*(.+)/i)
+  if (coverageAmountMatch) notes.push(`סכום כיסוי: ${coverageAmountMatch[1].trim()}`)
+
+  const insurancePeriodMatch = content.match(/תקופת ביטוח:\s*(.+)/i)
+  if (insurancePeriodMatch) notes.push(`תקופת ביטוח: ${insurancePeriodMatch[1].trim()}`)
 
   if (result.address) notes.push(`כתובת: ${result.address}`)
 
